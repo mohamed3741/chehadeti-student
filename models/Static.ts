@@ -21,7 +21,7 @@ export enum DataKey {
     basket = 'basket',
     rememberedUser = 'rememberedUser',
     tmpPass = 'tmpPass',
-    MedrastiLanguage = 'medrasti-language',
+    ChehadetiLanguage = 'chehadeti-language',
     deviceId = 'deviceId',
 }
 

@@ -4,7 +4,7 @@ import {UserModel} from "../models/UserModel";
 
 
 const login = (user:UserModel) => {
-    return  apiDriver.post(`${Endpoints.MEDRASTI_APP}/users/login`, user)
+    return  apiDriver.post(`${Endpoints.CHEHADETI}/users/login`, user)
 }
 
 
@@ -16,7 +16,7 @@ const signUp = (user: {
     email: string;
     username: string
 }) => {
-    return  apiDriver.post(`${Endpoints.MEDRASTI_APP}/driver/signup`, user)
+    return  apiDriver.post(`${Endpoints.CHEHADETI}/driver/signup`, user)
 }
 
 export const AuthApi = {

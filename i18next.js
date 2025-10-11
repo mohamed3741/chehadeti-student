@@ -16,7 +16,7 @@ export const languageResources = {
 };
 
 const SUPPORTED = Object.keys(languageResources);
-const STORAGE_KEY = 'medrasti-language';
+const STORAGE_KEY = 'chehadeti-language';
 
 function pickFromDevice() {
     try {

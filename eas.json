@@ -7,7 +7,7 @@
       "channel": "development",
       "env": {
         "ENVIRONMENT": "development",
-        "MEDRASTI_APP": "https://api-staging.medrasti.com"
+        "CHEHADETI": "https://api-chehadeti.chehadeti.com"
       },
       "android": {
         "buildType": "apk",
@@ -23,7 +23,7 @@
       "channel": "integration",
       "env": {
         "ENVIRONMENT": "integration",
-        "MEDRASTI_APP": "https://api-staging.medrasti.com"
+        "CHEHADETI": "https://api-chehadeti.chehadeti.com"
       },
       "android": {
         "buildType": "apk",
@@ -40,7 +40,7 @@
       "channel": "staging",
       "env": {
         "ENVIRONMENT": "staging",
-        "MEDRASTI_APP": "https://api-staging.medrasti.com"
+        "CHEHADETI": "https://api-chehadeti.chehadeti.com"
       },
       "android": {
         "buildType": "apk",
@@ -58,7 +58,7 @@
       },
       "env": {
         "ENVIRONMENT": "production",
-        "MEDRASTI_APP": "https://api-production.medrasti.com",
+        "CHEHADETI": "https://api-production.chehadeti.com",
         "FIREBASE_APP_ID":"1:751690193993:ios:8f1bc0799a863fc973f398"
       },
       "android": {
@@ -76,7 +76,7 @@
         "appleTeamId": "J25B6JQ586",
         "companyName": "DIGI WAVE-SARL",
         "language": "en-US",
-        "sku": "medrasti-stg-015",
+        "sku": "chehadeti-stg-015",
         "ascAppId": "6752528095"
       }
     },
@@ -85,7 +85,7 @@
         "appleTeamId": "J25B6JQ586",
         "companyName": "DIGI WAVE-SARL",
         "language": "en-US",
-        "sku": "medrasti-prod-016",
+        "sku": "chehadeti-prod-016",
         "ascAppId": "6752528095"
       }
     }

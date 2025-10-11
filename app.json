@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Medrasti App",
-    "slug": "medrasti-app",
+    "name": "Chehadeti App",
+    "slug": "chehadeti-app",
     "version": "0.0.28",
     "orientation": "portrait",
     "jsEngine": "hermes",
     "icon": "./assets/icons/icon.png",
-    "scheme": "medrasti-app",
+    "scheme": "chehadeti-app",
     "userInterfaceStyle": "automatic",
     "updates": {
       "url": "https://u.expo.dev/2bb20f9b-cf94-43e0-b1f8-f71fc164817c"
@@ -31,10 +31,10 @@
       "supportsTablet": true,
       "appleTeamId": "J25B6JQ586",
       "infoPlist": {
-        "NSCameraUsageDescription": "Medrasti uses the camera to take and upload student photos during enrollment and when updating school profiles",
+        "NSCameraUsageDescription": "Chehadeti uses the camera to take and upload student photos during enrollment and when updating school profiles",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "bundleIdentifier": "com.medrasti.admin",
+      "bundleIdentifier": "com.chehadeti.admin",
       "buildNumber": "0.0.1"
     },
     "android": {
@@ -47,7 +47,7 @@
         "android.permission.CAMERA",
         "SYSTEM_ALERT_WINDOW"
       ],
-      "package": "com.medrasti.admin",
+      "package": "com.chehadeti.admin",
       "versionCode": 10
     },
     "web": {
@@ -57,7 +57,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Medrasti to use the camera to take student enrollment photos"
+          "cameraPermission": "Allow Chehadeti to use the camera to take student enrollment photos"
         }
       ],
       "expo-updates",
