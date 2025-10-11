@@ -1,8 +1,9 @@
 import { Endpoints } from "./Endpoints";
 import apiClient from "./ApiClient";
-import { StudentAuthDTO } from "../models/UserModel";
+import { StudentAuthDTO, ClasseDTO } from "../models/UserModel";
 
 const endPoint = `${Endpoints.CHEHADETI}/students`;
+const classesEndPoint = `${Endpoints.CHEHADETI}/classes`;
 
 const toIso = (d: Date | string) =>
     d instanceof Date ? d.toISOString() : d;
@@ -71,6 +72,14 @@ const findMe = () => {
     return apiClient.get<StudentAuthDTO>(`${endPoint}/me`);
 };
 
+/**
+ * Get all classes
+ * GET /classes/list
+ */
+const getClasses = () => {
+    return apiClient.get<ClasseDTO[]>(`${classesEndPoint}/list`);
+};
+
 export const StudentApi = {
     createStudent,
     getStudentById,
@@ -79,5 +88,6 @@ export const StudentApi = {
     getStudentByUsername,
     getStudentByEmail,
     signup,
-    findMe
+    findMe,
+    getClasses
 };

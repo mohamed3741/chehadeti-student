@@ -354,5 +354,9 @@
   "accountPendingActivation": "Account Pending Activation",
   "activationNoticeMessage": "You will be notified once your account is activated and you can access all features.",
   "contactAdminInstruction": "Contact your administrator for quick activation",
-  "understood": "I Understand"
+  "understood": "I Understand",
+  "class": "Class",
+  "selectClass": "Select your class",
+  "signupErrorClassRequired": "Please select a class",
+  "developed_by": "Developed by"
 }

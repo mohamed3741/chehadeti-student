@@ -26,7 +26,7 @@ const resetPassword = (passwd,body) => {
 }
 
 const getMe = () => {
-    return  apiClient.get(`${endPoint}users/me`)
+    return  apiClient.get(`${endPoint}students/me`)
 }
 
 const refreshToken = (body) => {
@@ -35,12 +35,6 @@ const refreshToken = (body) => {
 
 const changePassword = (body) => {
     return  apiClient.post(`${endPoint}users/change-password`,body)
-}
-
-
-
-const saveUserDevice = (data) => {
-    return  apiClient.post(`${Endpoints.MEDRASTI_APP}/admin/restaurant/create-or-update-device`, data)
 }
 
 const resetPasswd = (tel) => {
@@ -80,7 +74,6 @@ const deleteUser = (id) => {
 }
 export const UserApi = {
     checkUserExist,
-    saveUserDevice,
     updateLogo,
     getMe,
     generateCode,

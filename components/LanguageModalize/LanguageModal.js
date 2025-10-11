@@ -234,6 +234,49 @@ const LanguageModal = ({
                         {languageTypes.map((item) => (
                             <Item key={item.code} item={item} selected={activeRadio === item.index} />
                         ))}
+                        
+                        {/* Contact Information */}
+                        <View style={{
+                            marginTop: 16,
+                            paddingTop: 16,
+                            borderTopWidth: 1,
+                            borderTopColor: '#E5E7EB',
+                        }}>
+                            <View style={{
+                                flexDirection: isRTLContent ? 'row-reverse' : 'row',
+                                alignItems: 'center',
+                                backgroundColor: '#F9FAFB',
+                                padding: 12,
+                                borderRadius: 12,
+                                borderWidth: 1,
+                                borderColor: '#E5E7EB',
+                                gap: 10,
+                            }}>
+                                <Feather name="phone" size={18} color="#6B7280" />
+                                <View style={{ flex: 1 }}>
+                                    <StyledText 
+                                        textColor="#6B7280" 
+                                        style={{ 
+                                            fontSize: 12,
+                                            writingDirection: writingDir(i18next.language),
+                                            textAlign: textAlignFor(i18next.language),
+                                        }}
+                                    >
+                                        {t('needHelp') || 'Need help?'}
+                                    </StyledText>
+                                    <StyledText 
+                                        textColor={currentTheme.fontMainColor}
+                                        bold
+                                        style={{ 
+                                            fontSize: 15,
+                                            marginTop: 2,
+                                        }}
+                                    >
+                                        +222 3684 10 98
+                                    </StyledText>
+                                </View>
+                            </View>
+                        </View>
                     </ScrollView>
 
                     <View style={{ gap: 10 }}>
