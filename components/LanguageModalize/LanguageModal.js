@@ -70,7 +70,7 @@ const LanguageModal = ({
 
     async function determineInitialLanguage() {
         try {
-            const stored = await AsyncStorage.getItem('medrasti-language');
+            const stored = await AsyncStorage.getItem('chehadeti-language');
             const codes = languageTypes.map((l) => l.code);
             const storedValid = codes.includes(stored || '') ? stored : null;
 
@@ -102,7 +102,7 @@ const LanguageModal = ({
 
             // Persist + change language (single source of truth)
             await setAppLanguage(code);
-            await AsyncStorage.setItem('medrasti-language-name', value);
+            await AsyncStorage.setItem('chehadeti-language-name', value);
         } catch {
             // no-op
         } finally {

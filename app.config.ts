@@ -24,15 +24,15 @@ export default ({config}: ConfigContext) => {
     }
     if (isStg) {
         customConfig = {
-            name: 'Medrasti App(STG)',
-            scheme: "medrasti-app-stg",
+            name: 'Chehadeti App(STG)',
+            scheme: "chehadeti-app-stg",
             ios: {
                 ...config?.ios,
-                bundleIdentifier: 'com.medrasti.admin.stg',
+                bundleIdentifier: 'com.chehadeti.admin.stg',
             },
             android: {
                 ...config?.android,
-                package: 'com.medrasti.admin.stg',
+                package: 'com.chehadeti.admin.stg',
                 newArchEnabled: true
             }
         }
