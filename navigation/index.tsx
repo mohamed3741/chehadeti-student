@@ -3,11 +3,12 @@ import {DarkTheme, DefaultTheme, NavigationContainer} from '@react-navigation/na
 import {createStackNavigator} from '@react-navigation/stack';
 import LinkingConfiguration from './LinkingConfiguration';
 import LoginScreen from "../screens/auth/LoginScreen";
+import SignupScreen from "../screens/auth/SignupScreen";
 import {navigationRef} from "../utils/CustomeNavigate";
 import useCachedResources from "../hooks/useCachedResources";
 import {useAuth} from "../hooks/useAuth";
 import {Host} from 'react-native-portalize';
-import HomeAdminScreen from "../screens/school/HomeAdminScreen";
+import HomeScreen from "../screens/school/HomeScreen";
 
 
 export default function Navigation({colorScheme}) {
@@ -45,6 +46,7 @@ function AuthNavigator() {
     return (
         <AuthStack.Navigator initialRouteName="Login" screenOptions={{headerShown: false}}>
             <AuthStack.Screen name="Login" component={LoginScreen}/>
+            <AuthStack.Screen name="Signup" component={SignupScreen}/>
         </AuthStack.Navigator>
     );
 }
@@ -54,8 +56,8 @@ const Stack = createStackNavigator();
 function RootNavigator() {
     return (
         <Stack.Navigator screenOptions={{headerShown: false}}>
-            <Stack.Screen name="Root" component={HomeAdminScreen}/>
-            <Stack.Screen name="Home" component={HomeAdminScreen}/>
+            <Stack.Screen name="Root" component={HomeScreen}/>
+            <Stack.Screen name="Home" component={HomeScreen}/>
         </Stack.Navigator>
     );
 }

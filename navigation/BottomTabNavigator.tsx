@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {createDrawerNavigator} from '@react-navigation/drawer';
 import CustomDrawerContent from "../components/Drawer";
-import HomeAdminScreen from "../screens/school/HomeAdminScreen";
+import HomeScreen from "../screens/school/HomeScreen";
 
 const Drawer = createDrawerNavigator();
 
@@ -21,7 +21,7 @@ export default function DrawerNavigator() {
             headerShown: false
         }}
     >
-        <Drawer.Screen name="Home" component={HomeAdminScreen} options={{title: 'Orders overview'}}/>
+        <Drawer.Screen name="Home" component={HomeScreen} options={{title: 'Orders overview'}}/>
     </Drawer.Navigator>);
 }
 

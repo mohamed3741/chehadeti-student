@@ -7,7 +7,7 @@
       "channel": "development",
       "env": {
         "ENVIRONMENT": "development",
-        "CHEHADETI": "https://api-chehadeti.chehadeti.com"
+        "CHEHADETI": "https://api-backend.chehadeti.com"
       },
       "android": {
         "buildType": "apk",
@@ -23,7 +23,7 @@
       "channel": "integration",
       "env": {
         "ENVIRONMENT": "integration",
-        "CHEHADETI": "https://api-chehadeti.chehadeti.com"
+        "CHEHADETI": "https://api-backend.chehadeti.com"
       },
       "android": {
         "buildType": "apk",
@@ -40,7 +40,7 @@
       "channel": "staging",
       "env": {
         "ENVIRONMENT": "staging",
-        "CHEHADETI": "https://api-chehadeti.chehadeti.com"
+        "CHEHADETI": "https://api-backend.chehadeti.com"
       },
       "android": {
         "buildType": "apk",

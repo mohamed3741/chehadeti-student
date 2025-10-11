@@ -2,24 +2,25 @@ import {GenderEnum, RolesEnum} from "./Static";
 import { ImageSourcePropType } from "react-native";
 
 export class SystemUserModel {
+    // From HasTimestampsDTO
     createdAt?: string;
     updatedAt?: string;
+    
+    // From StudentDTO
     id?: number;
+    validationStatus?: string; // PENDING, VALIDATED, REJECTED, etc.
+    validatedAt?: string;
+    
+    // From UserDTO
+    type?: string; // STUDENT, ADMIN, etc.
     email?: string;
+    username?: string;
+    tel?: string;
     firstName?: string;
     lastName?: string;
-    username?: string;
-    name?: string;
-    tel?: string;
-    nationality?: string;
     password?: string;
-    referredBy?: number;
-    isTmpPassword?: boolean;
-    isTelVerified?: Boolean;
-    isVerified?: boolean;
-    loginProvider?: string;
-    logo: ImageSourcePropType;
-    walletSold?: string;
-    school: any;
-    permissions: string[];
+    
+    // Legacy/Additional fields (kept for backward compatibility)
+    name?: string;
+
 }
