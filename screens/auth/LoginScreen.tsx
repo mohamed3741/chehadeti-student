@@ -22,8 +22,9 @@ import {AuthApi} from "../../api/AuthApi"
 import {useAuth} from "../../hooks/useAuth"
 import {Toast} from "../../components/Toast"
 import {useLoader} from "../../hooks/useLoader"
-import type {LoginResponse} from "../../models/LoginResponse"
 import {useTranslation} from "react-i18next";
+import Colors from "../../constants/Colors"
+import {LoginResponse} from "../../models/LoginResponse";
 
 export default function LoginScreen({navigation, route}) {
     const [code, setCode] = useState("MR");
@@ -111,7 +112,7 @@ export default function LoginScreen({navigation, route}) {
 
     return (
         <View style={styles.container}>
-            <StatusBar barStyle="light-content" backgroundColor="#4A90E2"/>
+            <StatusBar barStyle="light-content" backgroundColor={Colors.primary}/>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -150,7 +151,7 @@ export default function LoginScreen({navigation, route}) {
                                     <Ionicons
                                         name="person-outline"
                                         size={20}
-                                        color={focusedField === "email" ? "#4A90E2" : "#B0B0B0"}
+                                        color={focusedField === "email" ? Colors.primary : "#B0B0B0"}
                                         style={styles.inputIcon}
                                     />
                                     <TextInput
@@ -174,7 +175,7 @@ export default function LoginScreen({navigation, route}) {
                                     <Ionicons
                                         name="lock-closed-outline"
                                         size={20}
-                                        color={focusedField === "password" ? "#4A90E2" : "#B0B0B0"}
+                                        color={focusedField === "password" ? Colors.primary : "#B0B0B0"}
                                         style={styles.inputIcon}
                                     />
                                     <TextInput
@@ -235,8 +236,10 @@ export default function LoginScreen({navigation, route}) {
                                 accessibilityLabel={t("login")}
                             >
                                 <LinearGradient
-                                    colors={isLoading ? ["#CCCCCC", "#AAAAAA"] : ["#4A90E2", "#357ABD"]}
+                                    colors={isLoading ? ["#CCCCCC", "#AAAAAA"] : [Colors.primary, "#8B5FCF"]}
                                     style={styles.loginButtonGradient}
+                                    start={{ x: 0, y: 0 }}
+                                    end={{ x: 1, y: 0 }}
                                 >
                                     {isLoading ? (
                                         <View style={styles.loadingContainer}>
@@ -254,6 +257,18 @@ export default function LoginScreen({navigation, route}) {
                                     )}
                                 </LinearGradient>
                             </TouchableOpacity>
+
+                            {/* Sign Up Link */}
+                            <View style={styles.signupLinkContainer}>
+                                <StyledText style={styles.signupLinkText}>
+                                    {t("dontHaveAccount") || "Don't have an account?"}{" "}
+                                </StyledText>
+                                <TouchableOpacity onPress={() => goTo("Signup")}>
+                                    <StyledText style={styles.signupLink}>
+                                        {t("signUp") || "Sign Up"}
+                                    </StyledText>
+                                </TouchableOpacity>
+                            </View>
                         </View>
 
                         <TouchableOpacity
@@ -276,7 +291,7 @@ export default function LoginScreen({navigation, route}) {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#4A90E2",
+        backgroundColor: Colors.primary,
     },
     gradientBackground: {
         position: "absolute",
@@ -372,9 +387,9 @@ const styles = StyleSheet.create({
         height: 55,
     },
     inputWrapperFocused: {
-        borderColor: "#4A90E2",
+        borderColor: Colors.primary,
         backgroundColor: "#FFFFFF",
-        shadowColor: "#4A90E2",
+        shadowColor: Colors.primary,
         shadowOffset: {
             width: 0,
             height: 2,
@@ -414,13 +429,13 @@ const styles = StyleSheet.create({
         height: 20,
         borderRadius: 4,
         borderWidth: 2,
-        borderColor: "#4A90E2",
+        borderColor: Colors.primary,
         marginRight: 8,
         justifyContent: "center",
         alignItems: "center",
     },
     checkboxChecked: {
-        backgroundColor: "#4A90E2",
+        backgroundColor: Colors.primary,
     },
     rememberMeText: {
         fontSize: 14,
@@ -429,9 +444,26 @@ const styles = StyleSheet.create({
     },
     forgotPasswordText: {
         fontSize: 14,
-        color: "#4A90E2",
+        color: Colors.primary,
         fontWeight: "500",
         fontFamily: FontsEnum.Poppins_500Medium,
+    },
+    signupLinkContainer: {
+        flexDirection: "row",
+        justifyContent: "center",
+        alignItems: "center",
+        marginTop: 8,
+    },
+    signupLinkText: {
+        fontSize: 14,
+        color: "#666666",
+        fontFamily: FontsEnum.Poppins_400Regular,
+    },
+    signupLink: {
+        fontSize: 14,
+        color: Colors.primary,
+        fontWeight: "600",
+        fontFamily: FontsEnum.Poppins_600SemiBold,
     },
     loginButton: {
         borderRadius: 12,

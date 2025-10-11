@@ -3,6 +3,7 @@ import {DarkTheme, DefaultTheme, NavigationContainer} from '@react-navigation/na
 import {createStackNavigator} from '@react-navigation/stack';
 import LinkingConfiguration from './LinkingConfiguration';
 import LoginScreen from "../screens/auth/LoginScreen";
+import SignupScreen from "../screens/auth/SignupScreen";
 import {navigationRef} from "../utils/CustomeNavigate";
 import useCachedResources from "../hooks/useCachedResources";
 import {useAuth} from "../hooks/useAuth";
@@ -45,6 +46,7 @@ function AuthNavigator() {
     return (
         <AuthStack.Navigator initialRouteName="Login" screenOptions={{headerShown: false}}>
             <AuthStack.Screen name="Login" component={LoginScreen}/>
+            <AuthStack.Screen name="Signup" component={SignupScreen}/>
         </AuthStack.Navigator>
     );
 }

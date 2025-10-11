@@ -2,14 +2,12 @@ import React, {useMemo, useState} from 'react';
 import {ActivityIndicator, FlatList, Linking, Modal, StyleSheet, Text, TouchableOpacity, View} from 'react-native';
 import {Feather, FontAwesome6, Ionicons} from '@expo/vector-icons';
 import {useNavigation} from '@react-navigation/native';
-import SchoolHeader from "../../components/SchoolHeader";
 import {useAuth} from '../../hooks/useAuth';
 import {StyledText} from "../../components/StyledText";
 import {FontsEnum} from "../../constants/FontsEnum";
 import {useTranslation} from "react-i18next";
 import {usePermissions} from "../../hooks/usePermissions";
 import {filterIconsByPermissions} from "../../utils/permissionUtils";
-import FinanceScreen from "./FinanceScreen";
 
 
 const HomeAdminScreen = () => {
@@ -81,7 +79,6 @@ const HomeAdminScreen = () => {
 
     return (
         <View style={{ flex: 1 }}>
-            <SchoolHeader manager={connectedUser} goBack={false} />
             <View style={styles.container}>
                 <FlatList
                     data={visibleIconData}

@@ -19,6 +19,7 @@ apiClient.addAsyncRequestTransform(async (request) => {
         !token ||
         request.url.endsWith("/signup") ||
         request.url.endsWith("/login") ||
+        request.url.endsWith("/exchange-token") ||
         request.url.endsWith("/refresh-token") ||
         request.url.endsWith("/request-password-reset") ||
         request.url.endsWith("/check-code-for-reset") ||
