@@ -10,19 +10,24 @@ import {
     StatusBar,
     Image,
     Animated,
+    Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import CountryPicker, { Country, CountryCode } from 'react-native-country-picker-modal';
 import { StyledText } from '../../components/StyledText';
 import { Toast } from '../../components/Toast';
 import { FontsEnum } from '../../constants/FontsEnum';
 import { StudentApi } from '../../api/studentApi';
+import { AuthApi } from '../../api/AuthApi';
+import { UserApi } from '../../api/UserApi';
 import { useLoader } from '../../hooks/useLoader';
+import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import Colors from '../../constants/Colors';
+import { LoginResponse } from '../../models/LoginResponse';
 
 interface FormErrors {
-    username?: string;
     email?: string;
     password?: string;
     confirmPassword?: string;
@@ -34,10 +39,10 @@ interface FormErrors {
 export default function SignupScreen({ navigation }: any) {
     const { t } = useTranslation();
     const { setLoader, removeLoader, isLoading } = useLoader();
-
+    const { storeToken, refreshUser, connectedUser } = useAuth();
+    
     // Form fields
     const [formData, setFormData] = useState({
-        username: '',
         email: '',
         password: '',
         confirmPassword: '',
@@ -45,17 +50,23 @@ export default function SignupScreen({ navigation }: any) {
         lastName: '',
         tel: '',
     });
-
+    
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-    const [focusedField, setFocusedField] = useState<string | null>(null);
     const [errors, setErrors] = useState<FormErrors>({});
-
+    const [showVerificationModal, setShowVerificationModal] = useState(false);
+    
+    // Country picker state
+    const [countryCode, setCountryCode] = useState<CountryCode>('MR');
+    const [country, setCountry] = useState<Country | null>(null);
+    const [callingCode, setCallingCode] = useState('222');
+    const [showCountryPicker, setShowCountryPicker] = useState(false);
+    
     // Refs for inputs
-    const emailRef = useRef<TextInput>(null);
     const firstNameRef = useRef<TextInput>(null);
     const lastNameRef = useRef<TextInput>(null);
     const telRef = useRef<TextInput>(null);
+    const emailRef = useRef<TextInput>(null);
     const passwordRef = useRef<TextInput>(null);
     const confirmPasswordRef = useRef<TextInput>(null);
 
@@ -67,43 +78,55 @@ export default function SignupScreen({ navigation }: any) {
         }
     };
 
+    const onSelectCountry = (selectedCountry: Country) => {
+        setCountry(selectedCountry);
+        setCountryCode(selectedCountry.cca2);
+        setCallingCode(selectedCountry.callingCode[0]);
+    };
+
     const validateForm = (): boolean => {
         const newErrors: FormErrors = {};
-
-        if (!formData.username.trim()) {
-            newErrors.username = t('usernameRequired') || 'Username is required';
-        } else if (formData.username.length < 3) {
-            newErrors.username = t('usernameTooShort') || 'Username must be at least 3 characters';
-        }
-
-        if (!formData.email.trim()) {
-            newErrors.email = t('emailRequired') || 'Email is required';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = t('emailInvalid') || 'Invalid email format';
-        }
-
+        
+        // First Name validation
         if (!formData.firstName.trim()) {
-            newErrors.firstName = t('firstNameRequired') || 'First name is required';
+            newErrors.firstName = t('signupErrorFirstNameRequired') || 'Please enter your first name to continue';
+        } else if (formData.firstName.trim().length < 2) {
+            newErrors.firstName = t('signupErrorFirstNameTooShort') || 'First name must be at least 2 characters';
         }
-
+        
+        // Last Name validation
         if (!formData.lastName.trim()) {
-            newErrors.lastName = t('lastNameRequired') || 'Last name is required';
+            newErrors.lastName = t('signupErrorLastNameRequired') || 'Please enter your last name to continue';
+        } else if (formData.lastName.trim().length < 2) {
+            newErrors.lastName = t('signupErrorLastNameTooShort') || 'Last name must be at least 2 characters';
         }
-
+        
+        // Phone validation
         if (!formData.tel.trim()) {
-            newErrors.tel = t('phoneRequired') || 'Phone number is required';
+            newErrors.tel = t('signupErrorPhoneRequired') || 'Please enter your phone number to create your account';
+        } else if (formData.tel.trim().length < 8) {
+            newErrors.tel = t('signupErrorPhoneInvalid') || 'Please enter a valid phone number';
         }
-
+        
+        // Email validation (optional, but if provided must be valid)
+        if (formData.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+            newErrors.email = t('signupErrorEmailInvalid') || 'Please enter a valid email address';
+        }
+        
+        // Password validation
         if (!formData.password) {
-            newErrors.password = t('passwordRequired') || 'Password is required';
+            newErrors.password = t('signupErrorPasswordRequired') || 'Please create a password to secure your account';
         } else if (formData.password.length < 6) {
-            newErrors.password = t('passwordTooShort') || 'Password must be at least 6 characters';
+            newErrors.password = t('signupErrorPasswordTooShort') || 'Password must be at least 6 characters for security';
         }
-
-        if (formData.password !== formData.confirmPassword) {
-            newErrors.confirmPassword = t('passwordsDoNotMatch') || 'Passwords do not match';
+        
+        // Confirm Password validation
+        if (!formData.confirmPassword) {
+            newErrors.confirmPassword = t('signupErrorConfirmPasswordRequired') || 'Please confirm your password';
+        } else if (formData.password !== formData.confirmPassword) {
+            newErrors.confirmPassword = t('signupErrorPasswordsDoNotMatch') || 'Passwords do not match. Please try again';
         }
-
+        
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -116,34 +139,93 @@ export default function SignupScreen({ navigation }: any) {
 
         try {
             setLoader();
+
+            const fullPhone = `+${callingCode}${formData.tel.trim()}`;
+            
             const signupData = {
-                username: formData.username.trim(),
-                email: formData.email.trim().toLowerCase(),
+                email: formData.email.trim().toLowerCase() || undefined,
                 password: formData.password,
                 firstName: formData.firstName.trim(),
                 lastName: formData.lastName.trim(),
-                tel: formData.tel.trim(),
-                type: 'STUDENT',
+                tel: fullPhone,
+                username : fullPhone
             };
 
-            const result = await StudentApi.signup(signupData);
+            // Step 1: Create account
+            const signupResult = await StudentApi.signup(signupData);
 
-            if (result?.ok && result?.data) {
-                Toast(t('signupSuccess') || 'Account created successfully! Please login.');
-                // Navigate to login after a short delay
-                setTimeout(() => {
-                    navigation.navigate('Login');
-                }, 1500);
+            if (signupResult?.ok && signupResult?.data) {
+                // Step 2: Auto-login with credentials
+                const loginData = {
+                    username: fullPhone,
+                    password: formData.password
+                };
+                
+                const loginResult = await AuthApi.login(loginData);
+                
+                if (loginResult?.ok && loginResult?.data) {
+                    const loginResponse = loginResult.data as LoginResponse;
+                    
+                    // Step 3: Store tokens
+                    await storeToken(
+                        loginResponse.access_token,
+                        loginResponse.refresh_token,
+                        loginResponse.expires_in,
+                        loginResponse.refresh_expires_in
+                    );
+                    
+                    // Step 4: Refresh user data in Redux
+                    await refreshUser();
+                    
+                    // Step 5: Get fresh user data from API to check validation status
+                    const userResult = await UserApi.getMe();
+                    
+                    removeLoader();
+                    
+                    if (userResult?.ok && userResult?.data) {
+                        const userData = userResult.data;
+                        
+                        console.log('User validation status:', userData?.validationStatus);
+                        
+                        Toast(t('welcomeMessage') || 'Welcome! Your account has been created successfully.');
+                        
+                        // Check validation status from fresh data
+                        setTimeout(() => {
+                            if (userData?.validationStatus === 'PENDING') {
+                                console.log('Showing pending validation modal');
+                                setShowVerificationModal(true);
+                            } else {
+                                console.log('User is validated, automatic navigation will occur');
+                            }
+                            // If not PENDING, navigation will happen automatically via app navigation
+                        }, 500);
+                    } else {
+                        console.error('Failed to fetch user data after login');
+                        Toast(t('welcomeMessage') || 'Welcome! Your account has been created successfully.');
+                    }
+                } else {
+                    removeLoader();
+                    Toast(t('signupSuccessLoginFailed') || 'Account created! Please login manually.');
+                    setTimeout(() => {
+                        navigation.navigate('Login');
+                    }, 2000);
+                }
             } else {
-                const errorMessage = result?.data?.message || t('signupError') || 'Failed to create account';
+                removeLoader();
+                const errorMessage = signupResult?.data?.message || t('signupError') || 'Failed to create account';
                 Toast(errorMessage);
             }
         } catch (error) {
             console.error('Signup error:', error);
-            Toast(t('genericError') || 'An error occurred. Please try again.');
-        } finally {
             removeLoader();
+            Toast(t('genericError') || 'An error occurred. Please try again.');
         }
+    };
+
+    const handleVerificationModalClose = () => {
+        setShowVerificationModal(false);
+        // User stays logged in but on a waiting screen
+        // The navigation logic will keep them authenticated but restricted
     };
 
     return (
@@ -187,76 +269,6 @@ export default function SignupScreen({ navigation }: any) {
 
                     {/* Form Card */}
                     <View style={styles.formCard}>
-                        {/* Username */}
-                        <View style={styles.inputContainer}>
-                            <StyledText style={styles.inputLabel}>
-                                {t('username') || 'Username'}
-                            </StyledText>
-                            <View style={[
-                                styles.inputWrapper,
-                                focusedField === 'username' && styles.inputWrapperFocused,
-                                errors.username && styles.inputWrapperError,
-                            ]}>
-                                <Ionicons
-                                    name="person-outline"
-                                    size={20}
-                                    color={focusedField === 'username' ? Colors.primary : '#B0B0B0'}
-                                    style={styles.inputIcon}
-                                />
-                                <TextInput
-                                    style={styles.textInput}
-                                    placeholder={t('enterUsername') || 'Enter your username'}
-                                    placeholderTextColor="#B0B0B0"
-                                    value={formData.username}
-                                    onChangeText={(value) => updateField('username', value)}
-                                    onFocus={() => setFocusedField('username')}
-                                    onBlur={() => setFocusedField(null)}
-                                    returnKeyType="next"
-                                    onSubmitEditing={() => emailRef.current?.focus()}
-                                    autoCapitalize="none"
-                                />
-                            </View>
-                            {errors.username && (
-                                <StyledText style={styles.errorText}>{errors.username}</StyledText>
-                            )}
-                        </View>
-
-                        {/* Email */}
-                        <View style={styles.inputContainer}>
-                            <StyledText style={styles.inputLabel}>
-                                {t('email') || 'Email'}
-                            </StyledText>
-                            <View style={[
-                                styles.inputWrapper,
-                                focusedField === 'email' && styles.inputWrapperFocused,
-                                errors.email && styles.inputWrapperError,
-                            ]}>
-                                <Ionicons
-                                    name="mail-outline"
-                                    size={20}
-                                    color={focusedField === 'email' ? Colors.primary : '#B0B0B0'}
-                                    style={styles.inputIcon}
-                                />
-                                <TextInput
-                                    ref={emailRef}
-                                    style={styles.textInput}
-                                    placeholder={t('enterEmail') || 'Enter your email'}
-                                    placeholderTextColor="#B0B0B0"
-                                    value={formData.email}
-                                    onChangeText={(value) => updateField('email', value)}
-                                    onFocus={() => setFocusedField('email')}
-                                    onBlur={() => setFocusedField(null)}
-                                    keyboardType="email-address"
-                                    returnKeyType="next"
-                                    onSubmitEditing={() => firstNameRef.current?.focus()}
-                                    autoCapitalize="none"
-                                />
-                            </View>
-                            {errors.email && (
-                                <StyledText style={styles.errorText}>{errors.email}</StyledText>
-                            )}
-                        </View>
-
                         {/* First Name & Last Name - Side by side */}
                         <View style={styles.rowContainer}>
                             <View style={[styles.inputContainer, styles.halfWidth]}>
@@ -265,7 +277,6 @@ export default function SignupScreen({ navigation }: any) {
                                 </StyledText>
                                 <View style={[
                                     styles.inputWrapper,
-                                    focusedField === 'firstName' && styles.inputWrapperFocused,
                                     errors.firstName && styles.inputWrapperError,
                                 ]}>
                                     <TextInput
@@ -275,8 +286,6 @@ export default function SignupScreen({ navigation }: any) {
                                         placeholderTextColor="#B0B0B0"
                                         value={formData.firstName}
                                         onChangeText={(value) => updateField('firstName', value)}
-                                        onFocus={() => setFocusedField('firstName')}
-                                        onBlur={() => setFocusedField(null)}
                                         returnKeyType="next"
                                         onSubmitEditing={() => lastNameRef.current?.focus()}
                                     />
@@ -292,7 +301,6 @@ export default function SignupScreen({ navigation }: any) {
                                 </StyledText>
                                 <View style={[
                                     styles.inputWrapper,
-                                    focusedField === 'lastName' && styles.inputWrapperFocused,
                                     errors.lastName && styles.inputWrapperError,
                                 ]}>
                                     <TextInput
@@ -302,8 +310,6 @@ export default function SignupScreen({ navigation }: any) {
                                         placeholderTextColor="#B0B0B0"
                                         value={formData.lastName}
                                         onChangeText={(value) => updateField('lastName', value)}
-                                        onFocus={() => setFocusedField('lastName')}
-                                        onBlur={() => setFocusedField(null)}
                                         returnKeyType="next"
                                         onSubmitEditing={() => telRef.current?.focus()}
                                     />
@@ -314,38 +320,85 @@ export default function SignupScreen({ navigation }: any) {
                             </View>
                         </View>
 
-                        {/* Phone */}
+                        {/* Phone with Country Picker */}
                         <View style={styles.inputContainer}>
                             <StyledText style={styles.inputLabel}>
                                 {t('phoneNumber') || 'Phone Number'}
                             </StyledText>
                             <View style={[
                                 styles.inputWrapper,
-                                focusedField === 'tel' && styles.inputWrapperFocused,
                                 errors.tel && styles.inputWrapperError,
                             ]}>
-                                <Ionicons
-                                    name="call-outline"
-                                    size={20}
-                                    color={focusedField === 'tel' ? Colors.primary : '#B0B0B0'}
-                                    style={styles.inputIcon}
-                                />
+                                <TouchableOpacity 
+                                    style={styles.countryPickerButton}
+                                    onPress={() => setShowCountryPicker(true)}
+                                >
+                                    <CountryPicker
+                                        countryCode={countryCode}
+                                        withFilter
+                                        withFlag
+                                        withCallingCode
+                                        withEmoji
+                                        onSelect={onSelectCountry}
+                                        visible={showCountryPicker}
+                                        onClose={() => setShowCountryPicker(false)}
+                                    />
+                                    <StyledText style={styles.callingCodeText}>+{callingCode}</StyledText>
+                                    <Ionicons name="chevron-down" size={16} color="#B0B0B0" />
+                                </TouchableOpacity>
+                                <View style={styles.phoneSeparator} />
                                 <TextInput
                                     ref={telRef}
-                                    style={styles.textInput}
-                                    placeholder={t('enterPhone') || 'Enter your phone number'}
+                                    style={styles.phoneInput}
+                                    placeholder={t('enterPhone') || 'Phone number'}
                                     placeholderTextColor="#B0B0B0"
                                     value={formData.tel}
                                     onChangeText={(value) => updateField('tel', value)}
-                                    onFocus={() => setFocusedField('tel')}
-                                    onBlur={() => setFocusedField(null)}
                                     keyboardType="phone-pad"
                                     returnKeyType="next"
-                                    onSubmitEditing={() => passwordRef.current?.focus()}
+                                    onSubmitEditing={() => emailRef.current?.focus()}
                                 />
                             </View>
                             {errors.tel && (
                                 <StyledText style={styles.errorText}>{errors.tel}</StyledText>
+                            )}
+                        </View>
+
+                        {/* Email (Optional) */}
+                        <View style={styles.inputContainer}>
+                            <View style={styles.labelRow}>
+                                <StyledText style={styles.inputLabel}>
+                                    {t('email') || 'Email'}
+                                </StyledText>
+                                <StyledText style={styles.optionalLabel}>
+                                    {t('optional') || '(Optional)'}
+                                </StyledText>
+                            </View>
+                            <View style={[
+                                styles.inputWrapper,
+                                errors.email && styles.inputWrapperError,
+                            ]}>
+                                <Ionicons
+                                    name="mail-outline"
+                                    size={20}
+                                    color="#B0B0B0"
+                                    style={styles.inputIcon}
+                                />
+                                <TextInput
+                                    ref={emailRef}
+                                    style={styles.textInput}
+                                    placeholder={t('enterEmail') || 'Enter your email'}
+                                    placeholderTextColor="#B0B0B0"
+                                    value={formData.email}
+                                    onChangeText={(value) => updateField('email', value)}
+                                    keyboardType="email-address"
+                                    returnKeyType="next"
+                                    onSubmitEditing={() => passwordRef.current?.focus()}
+                                    autoCapitalize="none"
+                                />
+                            </View>
+                            {errors.email && (
+                                <StyledText style={styles.errorText}>{errors.email}</StyledText>
                             )}
                         </View>
 
@@ -356,13 +409,12 @@ export default function SignupScreen({ navigation }: any) {
                             </StyledText>
                             <View style={[
                                 styles.inputWrapper,
-                                focusedField === 'password' && styles.inputWrapperFocused,
                                 errors.password && styles.inputWrapperError,
                             ]}>
                                 <Ionicons
                                     name="lock-closed-outline"
                                     size={20}
-                                    color={focusedField === 'password' ? Colors.primary : '#B0B0B0'}
+                                    color="#B0B0B0"
                                     style={styles.inputIcon}
                                 />
                                 <TextInput
@@ -372,8 +424,6 @@ export default function SignupScreen({ navigation }: any) {
                                     placeholderTextColor="#B0B0B0"
                                     value={formData.password}
                                     onChangeText={(value) => updateField('password', value)}
-                                    onFocus={() => setFocusedField('password')}
-                                    onBlur={() => setFocusedField(null)}
                                     secureTextEntry={!showPassword}
                                     returnKeyType="next"
                                     onSubmitEditing={() => confirmPasswordRef.current?.focus()}
@@ -401,13 +451,12 @@ export default function SignupScreen({ navigation }: any) {
                             </StyledText>
                             <View style={[
                                 styles.inputWrapper,
-                                focusedField === 'confirmPassword' && styles.inputWrapperFocused,
                                 errors.confirmPassword && styles.inputWrapperError,
                             ]}>
                                 <Ionicons
                                     name="lock-closed-outline"
                                     size={20}
-                                    color={focusedField === 'confirmPassword' ? Colors.primary : '#B0B0B0'}
+                                    color="#B0B0B0"
                                     style={styles.inputIcon}
                                 />
                                 <TextInput
@@ -417,8 +466,6 @@ export default function SignupScreen({ navigation }: any) {
                                     placeholderTextColor="#B0B0B0"
                                     value={formData.confirmPassword}
                                     onChangeText={(value) => updateField('confirmPassword', value)}
-                                    onFocus={() => setFocusedField('confirmPassword')}
-                                    onBlur={() => setFocusedField(null)}
                                     secureTextEntry={!showConfirmPassword}
                                     returnKeyType="done"
                                     onSubmitEditing={handleSignup}
@@ -483,6 +530,63 @@ export default function SignupScreen({ navigation }: any) {
                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Verification Status Modal */}
+            <Modal
+                visible={showVerificationModal}
+                transparent
+                animationType="fade"
+                onRequestClose={handleVerificationModalClose}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContent}>
+                        <View style={styles.modalIconContainer}>
+                            <View style={styles.pendingIconWrapper}>
+                                <Ionicons name="time-outline" size={80} color={Colors.primary} />
+                            </View>
+                        </View>
+
+                        <StyledText style={styles.modalTitle}>
+                            {t('accountPendingActivation') || 'Account Pending Activation'}
+                        </StyledText>
+
+                        <StyledText style={styles.modalMessage}>
+                            {t('accountPendingMessage') || 'Your account has been created successfully! Please contact the administrator to activate your account.'}
+                        </StyledText>
+
+                        <View style={styles.infoBox}>
+                            <Ionicons name="information-circle-outline" size={22} color={Colors.primary} />
+                            <StyledText style={styles.infoText}>
+                                {t('activationNoticeMessage') || 'You will be notified once your account is activated and you can access all features.'}
+                            </StyledText>
+                        </View>
+
+                        <View style={styles.contactBox}>
+                            <Ionicons name="call-outline" size={20} color="#666666" />
+                            <StyledText style={styles.contactText}>
+                                {t('contactAdminInstruction') || 'Contact your administrator for quick activation'}
+                            </StyledText>
+                        </View>
+
+                        <TouchableOpacity
+                            style={styles.modalButton}
+                            onPress={handleVerificationModalClose}
+                            activeOpacity={0.8}
+                        >
+                            <LinearGradient
+                                colors={[Colors.primary, '#8B5FCF']}
+                                style={styles.modalButtonGradient}
+                                start={{ x: 0, y: 0 }}
+                                end={{ x: 1, y: 0 }}
+                            >
+                                <StyledText style={styles.modalButtonText}>
+                                    {t('understood') || 'I Understand'}
+                                </StyledText>
+                            </LinearGradient>
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -582,18 +686,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 15,
         height: 50,
     },
-    inputWrapperFocused: {
-        borderColor: Colors.primary,
-        backgroundColor: '#FFFFFF',
-        shadowColor: Colors.primary,
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
-    },
     inputWrapperError: {
         borderColor: '#EF4444',
     },
@@ -626,6 +718,41 @@ const styles = StyleSheet.create({
     },
     halfWidth: {
         width: '48%',
+    },
+    labelRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 8,
+    },
+    optionalLabel: {
+        fontSize: 12,
+        color: '#999999',
+        marginLeft: 6,
+        fontFamily: FontsEnum.Poppins_400Regular,
+    },
+    countryPickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingRight: 8,
+    },
+    callingCodeText: {
+        fontSize: 15,
+        color: '#333333',
+        marginLeft: 8,
+        marginRight: 4,
+        fontFamily: FontsEnum.Poppins_500Medium,
+    },
+    phoneSeparator: {
+        width: 1,
+        height: 24,
+        backgroundColor: '#E9ECEF',
+        marginHorizontal: 8,
+    },
+    phoneInput: {
+        flex: 1,
+        fontSize: 15,
+        color: '#333333',
+        fontFamily: FontsEnum.Poppins_400Regular,
     },
     signupButton: {
         borderRadius: 12,
@@ -669,6 +796,127 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontWeight: '600',
         fontFamily: FontsEnum.Poppins_600SemiBold,
+    },
+    // Modal Styles
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 24,
+        padding: 32,
+        width: '100%',
+        maxWidth: 400,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 10,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+        elevation: 20,
+    },
+    modalIconContainer: {
+        alignItems: 'center',
+        marginBottom: 24,
+    },
+    successIconWrapper: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    pendingIconWrapper: {
+        width: 100,
+        height: 100,
+        borderRadius: 50,
+        backgroundColor: 'rgba(245, 158, 11, 0.1)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        color: '#1F2937',
+        textAlign: 'center',
+        marginBottom: 16,
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+    },
+    modalMessage: {
+        fontSize: 15,
+        color: '#6B7280',
+        textAlign: 'center',
+        lineHeight: 24,
+        marginBottom: 24,
+        fontFamily: FontsEnum.Poppins_400Regular,
+    },
+    infoBox: {
+        flexDirection: 'row',
+        backgroundColor: 'rgba(106, 53, 193, 0.08)',
+        borderRadius: 12,
+        padding: 16,
+        marginBottom: 24,
+        alignItems: 'flex-start',
+    },
+    infoText: {
+        flex: 1,
+        fontSize: 14,
+        color: '#374151',
+        marginLeft: 12,
+        lineHeight: 20,
+        fontFamily: FontsEnum.Poppins_400Regular,
+    },
+    contactBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 10,
+        padding: 14,
+        marginBottom: 24,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    contactText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#666666',
+        marginLeft: 10,
+        fontFamily: FontsEnum.Poppins_400Regular,
+    },
+    modalButton: {
+        borderRadius: 12,
+        overflow: 'hidden',
+        shadowColor: Colors.primary,
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    modalButtonGradient: {
+        flexDirection: 'row',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+        marginRight: 8,
+    },
+    modalButtonIcon: {
+        marginLeft: 4,
     },
 });
 

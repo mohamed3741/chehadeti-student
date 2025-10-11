@@ -1,4 +1,3 @@
-import Fire from "../utils/Fire";
 import {clearData, getData, storeData} from "../utils/AsyncStorage";
 import {DataKey} from "../models/Static";
 import {clearSecureData, getSecureData, storeSecureData} from "../utils/SecureStorage";

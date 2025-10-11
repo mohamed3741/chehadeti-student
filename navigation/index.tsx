@@ -8,7 +8,7 @@ import {navigationRef} from "../utils/CustomeNavigate";
 import useCachedResources from "../hooks/useCachedResources";
 import {useAuth} from "../hooks/useAuth";
 import {Host} from 'react-native-portalize';
-import HomeAdminScreen from "../screens/school/HomeAdminScreen";
+import HomeScreen from "../screens/school/HomeScreen";
 
 
 export default function Navigation({colorScheme}) {
@@ -56,8 +56,8 @@ const Stack = createStackNavigator();
 function RootNavigator() {
     return (
         <Stack.Navigator screenOptions={{headerShown: false}}>
-            <Stack.Screen name="Root" component={HomeAdminScreen}/>
-            <Stack.Screen name="Home" component={HomeAdminScreen}/>
+            <Stack.Screen name="Root" component={HomeScreen}/>
+            <Stack.Screen name="Home" component={HomeScreen}/>
         </Stack.Navigator>
     );
 }

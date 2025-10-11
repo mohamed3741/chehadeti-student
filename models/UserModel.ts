@@ -1,18 +1,26 @@
-import {MediaModel} from './MediaModel';
-import {SystemUserModel} from "./SystemUserModel";
+
 
 
 export class UserModel {
     createdAt?: string;
     updatedAt?: string;
+
+    // From StudentDTO
     id?: number;
-    type?: string;
+    validationStatus?: string; // PENDING, VALIDATED, REJECTED, etc.
+    validatedAt?: string;
+
+    // From UserDTO
+    type?: string; // STUDENT, ADMIN, etc.
     email?: string;
     username?: string;
     tel?: string;
     firstName?: string;
     lastName?: string;
     password?: string;
+
+    // Legacy/Additional fields (kept for backward compatibility)
+    name?: string;
 }
 
 // Student DTO for authentication (extends UserModel)
