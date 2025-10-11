@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "751690193993",
+    "project_id": "digi-wave-57b8b",
+    "storage_bucket": "digi-wave-57b8b.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:751690193993:android:db48c5ec56e5334273f398",
+        "android_client_info": {
+          "package_name": "com.medrasti.admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBLMPCpV9pnvGjuHZjM5FTqxYpH3fvEm5g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

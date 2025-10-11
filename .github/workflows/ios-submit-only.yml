@@ -1,0 +1,127 @@
+name: iOS Submit Only (reuse existing artifact)
+
+on:
+  workflow_dispatch:
+    inputs:
+      runId:
+        description: "GitHub Actions run ID that produced the IPA artifact (e.g. 17935032339)"
+        required: true
+        type: string
+      artifactName:
+        description: "Artifact name (default: ios-staging-ipa-<runId>)"
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  ios-submit-only:
+    runs-on: macos-15
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+    steps:
+      - name: Validate required secrets
+        run: |
+          [ -n "${{ secrets.EXPO_TOKEN }}" ] || { echo "❌ Missing EXPO_TOKEN"; exit 1; }
+          [ -n "${{ secrets.ASC_API_KEY_P8_B64 }}" ] || { echo "❌ Missing ASC_API_KEY_P8_B64"; exit 1; }
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Compute artifact name
+        id: meta
+        run: |
+          if [ -n "${{ inputs.artifactName }}" ]; then
+            ARTIFACT_NAME="${{ inputs.artifactName }}"
+          else
+            ARTIFACT_NAME="ios-staging-ipa-${{ inputs.runId }}"
+          fi
+          echo "ARTIFACT_NAME=$ARTIFACT_NAME" >> "$GITHUB_ENV"
+          echo "artifact=$ARTIFACT_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Download IPA artifact by name
+        id: dl_named
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          run-id: ${{ inputs.runId }}
+          repository: ${{ github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download ALL artifacts from run (fallback)
+        if: steps.dl_named.outcome == 'failure'
+        id: dl_all
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.runId }}
+          repository: ${{ github.repository }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          path: _artifacts_all
+          merge-multiple: true
+
+      - name: Locate IPA file
+        id: find_ipa
+        run: |
+          set -e
+          IPA_PATH="$(ls -1t *.ipa _artifacts_all/**/*.ipa 2>/dev/null | head -n1 || true)"
+          if [ -z "$IPA_PATH" ]; then
+            echo "❌ No .ipa found in downloaded artifacts"
+            ls -la || true
+            ls -la _artifacts_all || true
+            exit 1
+          fi
+          echo "✅ Found IPA: $IPA_PATH"
+          echo "ipa=$IPA_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+
+      - name: Install EAS CLI (pinned)
+        run: |
+          npm i -g eas-cli@5
+          echo "$(npm prefix -g)/bin" >> "$GITHUB_PATH"
+          hash -r || true
+          eas --version
+
+      - name: Authenticate Expo (token)
+        run: eas whoami --token "$EXPO_TOKEN"
+
+      # sanity check so we don't attempt to submit an IPA with non-numeric or stale CFBundleVersion
+      - name: Show Info.plist & guard
+        id: plist
+        shell: bash
+        run: |
+          IPA="${{ steps.find_ipa.outputs.ipa }}"
+          echo "Inspecting Info.plist in IPA → $IPA"
+          CFBundleVersion="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' <(unzip -p "$IPA" "Payload/*.app/Info.plist"))"
+          ShortVersion="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' <(unzip -p "$IPA" "Payload/*.app/Info.plist"))"
+          echo "CFBundleVersion=$CFBundleVersion"
+          echo "CFBundleShortVersionString=$ShortVersion"
+          if ! [[ "$CFBundleVersion" =~ ^[0-9]+$ ]]; then
+            echo "❌ CFBundleVersion is not digits-only. Rebuild with numeric ios.buildNumber."
+            exit 1
+          fi
+
+      # 🔑 Write the .p8 file expected by your eas.json submit profile (if you use it)
+      - name: Write ASC API key (.p8) at repo root
+        run: |
+          echo "${{ secrets.ASC_API_KEY_P8_B64 }}" | base64 --decode > AuthKey_WAFF6GA392.p8
+          test -s AuthKey_WAFF6GA392.p8 || { echo "❌ .p8 key not written"; exit 1; }
+          echo "✅ Wrote AuthKey_WAFF6GA392.p8"
+
+      - name: Submit IPA to TestFlight (direct flags; works without eas.json submit profile)
+        env:
+          IPA_PATH: ${{ steps.find_ipa.outputs.ipa }}
+        run: |
+          eas submit \
+            --platform ios \
+            --path "$IPA_PATH" \
+            --non-interactive \
+            --verbose

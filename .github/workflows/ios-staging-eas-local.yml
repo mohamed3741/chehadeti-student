@@ -1,0 +1,271 @@
+name: iOS Staging (Local on GitHub Runner)
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: "Path to the Expo app (folder with app.json)"
+        required: true
+        default: "."
+        type: string
+      profile:
+        description: "EAS profile"
+        required: true
+        default: "staging"
+        type: string
+      platform:
+        description: "Platform"
+        required: true
+        default: "ios"
+        type: choice
+        options: ["ios"]
+      autoSubmit:
+        description: "Submit to TestFlight after build?"
+        required: true
+        default: "true"
+        type: choice
+        options: ["true", "false"]
+      commitBump:
+        description: "Commit & push the version bump?"
+        required: true
+        default: "false"
+        type: choice
+        options: ["true", "false"]
+
+concurrency:
+  group: ios-staging-local-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ios-staging-eas-local:
+    runs-on: macos-15
+    env:
+      EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      # expose path to ASC key for EAS CLI (points into app folder)
+      EXPO_ASC_API_KEY_PATH: ${{ github.workspace }}/${{ inputs.app }}/.eas/asc.json
+      GIT_AUTHOR_NAME: github-actions[bot]
+      GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+      GIT_COMMITTER_NAME: github-actions[bot]
+      GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+
+    steps:
+      - name: Verify required secrets
+        run: |
+          [ -n "${{ secrets.EXPO_TOKEN }}" ] || { echo "❌ Missing EXPO_TOKEN"; exit 1; }
+          [ -n "${{ secrets.ASC_API_KEY_JSON_B64 }}" ] || { echo "❌ Missing ASC_API_KEY_JSON_B64"; exit 1; }
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Select Xcode 16.4
+        run: |
+          if [ -d "/Applications/Xcode_16.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_16.4.app
+          fi
+          xcodebuild -version
+
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: "npm"
+          cache-dependency-path: "${{ inputs.app }}/package-lock.json"
+
+      # ---------- CACHES (speed!) ----------
+      - name: Cache npm global + npm cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            ~/.config/npm
+            ${{ runner.tool_cache }}/node
+            /usr/local/lib/node_modules
+          key: npm-global-${{ runner.os }}-${{ hashFiles(format('{0}/package-lock.json', inputs.app)) }}
+
+      - name: Cache CocoaPods (inside app folder)
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ inputs.app }}/ios/Pods
+            ~/Library/Caches/CocoaPods
+            ~/.cocoapods
+          key: pods-${{ runner.os }}-${{ hashFiles(format('{0}/ios/Podfile.lock', inputs.app)) }}
+          restore-keys: |
+            pods-${{ runner.os }}-
+
+      - name: Cache EAS CLI cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/eas
+          key: eas-cache-${{ runner.os }}-${{ hashFiles(format('{0}/eas.json', inputs.app), format('{0}/app.json', inputs.app), format('{0}/app.config.*', inputs.app), format('{0}/package-lock.json', inputs.app)) }}
+          restore-keys: |
+            eas-cache-${{ runner.os }}-
+
+      # ---------- TOOLS ----------
+      - name: Install latest EAS CLI and ensure PATH
+        run: |
+          npm i -g eas-cli@latest
+          echo "$(npm prefix -g)/bin" >> "$GITHUB_PATH"
+          hash -r || true
+          which eas || true
+          eas --version || true
+
+      - name: Authenticate Expo (token)
+        run: eas whoami --token "$EXPO_TOKEN"
+
+      - name: Install JS dependencies (npm ci, legacy peer deps)
+        working-directory: ./${{ inputs.app }}
+        run: |
+          npm config set legacy-peer-deps true
+          if [ -f package-lock.json ]; then
+            npm ci --prefer-offline || npm ci
+          else
+            npm i --legacy-peer-deps --prefer-offline || npm i --legacy-peer-deps
+          fi
+
+      - name: Write App Store Connect API key (.eas/asc.json)
+        working-directory: ./${{ inputs.app }}
+        run: |
+          mkdir -p .eas
+          echo "${{ secrets.ASC_API_KEY_JSON_B64 }}" | base64 --decode > .eas/asc.json
+          node -e "const fs=require('fs');try{const j=JSON.parse(fs.readFileSync('./.eas/asc.json','utf8'));if(!j.keyId||!j.issuerId||!(j.key||j.keyP8))throw new Error('asc.json missing keyId/issuerId/key');}catch(e){console.error(e.message);process.exit(1)}"
+
+      # ---------- VERSIONING ----------
+      - name: Detect source and set VERSION (tag or branch)
+        id: detect
+        run: |
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "SOURCE=tag" >> $GITHUB_ENV
+            RAW_TAG="${GITHUB_REF#refs/tags/}"; VERSION="${RAW_TAG#v}"
+            echo "VERSION=$VERSION" >> $GITHUB_ENV
+            echo "Detected tag: $RAW_TAG -> VERSION=$VERSION"
+          else
+            echo "SOURCE=branch" >> $GITHUB_ENV
+            echo "Running from branch: ${GITHUB_REF#refs/heads/}"
+          fi
+
+      - name: Set version from tag (digits-only iOS buildNumber)
+        if: env.SOURCE == 'tag'
+        working-directory: ./${{ inputs.app }}
+        run: |
+          # Validate VERSION looks like x.y.z
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ VERSION '$VERSION' must look like x.y.z"; exit 1;
+          fi
+
+          # Encode 1.2.3 -> 1002003 (also as string for iOS)
+          jq --arg version "$VERSION" '
+            .expo.version = $version
+            | (.expo.ios //= {})
+            | .expo.ios.buildNumber =
+                ((($version | split(".") | map(tonumber)) as $v
+                  | ($v[0]*1000000 + $v[1]*1000 + $v[2])) | tostring)
+            | (.expo.android //= {})
+            | .expo.android.versionCode =
+                ($version | split(".") | map(tonumber) | (.[0]*1000000 + .[1]*1000 + .[2]))
+          ' app.json > app.tmp.json && mv app.tmp.json app.json
+
+          echo "✅ Versions set from tag $VERSION"
+          echo "Expo version: $(jq -r '.expo.version' app.json)"
+          echo "iOS buildNumber: $(jq -r '.expo.ios.buildNumber' app.json)"
+          echo "Android versionCode: $(jq -r '.expo.android.versionCode' app.json)"
+
+      - name: Auto-bump version from main (digits-only iOS buildNumber)
+        if: env.SOURCE == 'branch'
+        working-directory: ./${{ inputs.app }}
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout main
+          git pull --ff-only origin main
+
+          CURRENT_VERSION="$(jq -r '.expo.version' app.json)"
+          if ! [[ "$CURRENT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "❌ Current expo.version '$CURRENT_VERSION' must be x.y.z"; exit 1;
+          fi
+          IFS='.' read -r MA MI PA <<< "$CURRENT_VERSION"
+          NEW_VERSION="$MA.$MI.$((PA+1))"
+          echo "Current: $CURRENT_VERSION  ->  New: $NEW_VERSION"
+
+          jq --arg version "$NEW_VERSION" '
+            .expo.version = $version
+            | (.expo.ios //= {})
+            | .expo.ios.buildNumber =
+                ((($version | split(".") | map(tonumber)) as $v
+                  | ($v[0]*1000000 + $v[1]*1000 + $v[2])) | tostring)
+            | (.expo.android //= {})
+            | .expo.android.versionCode =
+                ($version | split(".") | map(tonumber) | (.[0]*1000000 + .[1]*1000 + .[2]))
+          ' app.json > app.tmp.json && mv app.tmp.json app.json
+
+          echo "✅ Bumped:"
+          echo "Expo version: $(jq -r '.expo.version' app.json)"
+          echo "iOS buildNumber: $(jq -r '.expo.ios.buildNumber' app.json)"
+          echo "Android versionCode: $(jq -r '.expo.android.versionCode' app.json)"
+
+          # Optional commit & push (skip safely if nothing to commit or ignored)
+          if [ "${{ inputs.commitBump }}" = "true" ]; then
+            git config --global user.name "${GIT_AUTHOR_NAME}"
+            git config --global user.email "${GIT_AUTHOR_EMAIL}"
+            git add -f app.json || true
+            if git diff --cached --quiet; then
+              echo "ℹ️ Nothing to commit (possibly gitignored). Skipping commit."
+            else
+              git commit -m "Auto-bump version to $NEW_VERSION after ${{ inputs.platform }} ${{ inputs.profile }} build" || true
+              git push origin HEAD:refs/heads/main || echo "ℹ️ Push skipped (protected branch?)."
+            fi
+          fi
+
+          echo "VERSION=$NEW_VERSION" >> $GITHUB_ENV
+
+      # ---------- BUILD ----------
+      - name: EAS local iOS build
+        id: eas_build
+        working-directory: ./${{ inputs.app }}
+        env:
+          EAS_LOCAL_BUILD_ARTIFACTS_DIR: ${{ github.workspace }}/artifacts
+          EAS_NO_VCS: "1"
+        run: |
+          rm -rf "$EAS_LOCAL_BUILD_ARTIFACTS_DIR"
+          mkdir -p "$EAS_LOCAL_BUILD_ARTIFACTS_DIR"
+
+          eas build \
+            --platform ${{ inputs.platform }} \
+            --profile  ${{ inputs.profile }} \
+            --local --non-interactive
+
+          echo "Build artifacts:"
+          ls -la "$EAS_LOCAL_BUILD_ARTIFACTS_DIR" || true
+
+          IPA_PATH="$(ls -1t "$EAS_LOCAL_BUILD_ARTIFACTS_DIR"/*.ipa 2>/dev/null | head -n 1 || true)"
+          if [ -z "$IPA_PATH" ]; then
+            echo "❌ No .ipa found in $EAS_LOCAL_BUILD_ARTIFACTS_DIR"
+            exit 1
+          fi
+          echo "✅ Found IPA: $IPA_PATH"
+          echo "ipa=$IPA_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Show CFBundleVersion & ShortVersion (sanity)
+        run: |
+          IPA="${{ steps.eas_build.outputs.ipa }}"
+          echo "Inspecting Info.plist in IPA → $IPA"
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" <(unzip -p "$IPA" "Payload/*.app/Info.plist")
+          /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" <(unzip -p "$IPA" "Payload/*.app/Info.plist")
+
+      - name: Upload .ipa artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-staging-ipa-${{ github.run_id }}
+          path: ${{ steps.eas_build.outputs.ipa }}
+          if-no-files-found: error
+
+      # ---------- SUBMIT (optional) ----------
+      - name: Submit to TestFlight
+        if: ${{ inputs.autoSubmit == 'true' }}
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          IPA="${{ steps.eas_build.outputs.ipa }}"
+          eas submit --platform ios --path "$IPA" --non-interactive --verbose

@@ -1,0 +1,89 @@
+{
+  "expo": {
+    "name": "Medrasti App",
+    "slug": "medrasti-app",
+    "version": "0.0.28",
+    "orientation": "portrait",
+    "jsEngine": "hermes",
+    "icon": "./assets/icons/icon.png",
+    "scheme": "medrasti-app",
+    "userInterfaceStyle": "automatic",
+    "updates": {
+      "url": "https://u.expo.dev/2bb20f9b-cf94-43e0-b1f8-f71fc164817c"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e09a2096-53e0-4cf4-bb0e-218076521438"
+      }
+    },
+    "splash": {
+      "image": "./assets/images/logo-splash.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "appleTeamId": "J25B6JQ586",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Medrasti uses the camera to take and upload student photos during enrollment and when updating school profiles",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "bundleIdentifier": "com.medrasti.admin",
+      "buildNumber": "0.0.1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/images/logo-splash.png",
+        "backgroundColor": "#FFFFFF"
+      },
+      "permissions": [
+        "VIBRATE",
+        "android.permission.CAMERA",
+        "SYSTEM_ALERT_WINDOW"
+      ],
+      "package": "com.medrasti.admin",
+      "versionCode": 10
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Medrasti to use the camera to take student enrollment photos"
+        }
+      ],
+      "expo-updates",
+      "expo-secure-store",
+      "expo-router",
+      "expo-asset",
+      "expo-font",
+      "expo-web-browser",
+      "expo-localization",
+      "./android-material.plugins",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35,
+            "buildToolsVersion": "35.0.0",
+            "newArchEnabled": true
+          },
+          "ios": {
+            "useFrameworks": "static",
+            "deploymentTarget": "15.1",
+            "newArchEnabled": true
+          }
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "cli": {
+    "version": ">= 0.47.0"
+  },
+  "build": {
+    "development": {
+      "channel": "development",
+      "env": {
+        "ENVIRONMENT": "development",
+        "MEDRASTI_APP": "https://api-staging.medrasti.com"
+      },
+      "android": {
+        "buildType": "apk",
+        "autoIncrement": "version",
+        "image": "latest"
+      },
+      "ios": {
+        "autoIncrement": "version",
+        "image": "latest"
+      }
+    },
+    "integration": {
+      "channel": "integration",
+      "env": {
+        "ENVIRONMENT": "integration",
+        "MEDRASTI_APP": "https://api-staging.medrasti.com"
+      },
+      "android": {
+        "buildType": "apk",
+        "autoIncrement": "version",
+        "image": "latest"
+      },
+      "ios": {
+        "autoIncrement": "version",
+        "image": "latest"
+      }
+    },
+    "staging": {
+      "distribution": "store",
+      "channel": "staging",
+      "env": {
+        "ENVIRONMENT": "staging",
+        "MEDRASTI_APP": "https://api-staging.medrasti.com"
+      },
+      "android": {
+        "buildType": "apk",
+        "autoIncrement": "versionCode"
+      },
+      "ios": {
+        "autoIncrement": "version",
+        "image": "macos-sequoia-15.5-xcode-16.4"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "cache": {
+        "disabled": true
+      },
+      "env": {
+        "ENVIRONMENT": "production",
+        "MEDRASTI_APP": "https://api-production.medrasti.com",
+        "FIREBASE_APP_ID":"1:751690193993:ios:8f1bc0799a863fc973f398"
+      },
+      "android": {
+        "autoIncrement": "versionCode",
+        "buildType": "apk"
+      },
+      "ios": {
+        "autoIncrement": "version"
+      }
+    }
+  },
+  "submit": {
+    "staging": {
+      "ios": {
+        "appleTeamId": "J25B6JQ586",
+        "companyName": "DIGI WAVE-SARL",
+        "language": "en-US",
+        "sku": "medrasti-stg-015",
+        "ascAppId": "6752528095"
+      }
+    },
+    "production": {
+      "ios": {
+        "appleTeamId": "J25B6JQ586",
+        "companyName": "DIGI WAVE-SARL",
+        "language": "en-US",
+        "sku": "medrasti-prod-016",
+        "ascAppId": "6752528095"
+      }
+    }
+  }
+}
