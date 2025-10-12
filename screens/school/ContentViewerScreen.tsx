@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
     View,
     StyleSheet,
@@ -10,9 +10,9 @@ import {
     Alert,
     Linking,
     ScrollView,
-    Platform,
+    Platform, AppState,
 } from 'react-native';
-import {useNavigation, RouteProp} from '@react-navigation/native';
+import {useNavigation, RouteProp, useFocusEffect} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {StyledText} from "../../components/StyledText";
 import {FontsEnum} from "../../constants/FontsEnum";
@@ -22,6 +22,7 @@ import Colors from "../../constants/Colors";
 import {ContentDTO, MediaEnum} from "../../models/LMS";
 import {WebView} from 'react-native-webview';
 import {TabHomeParamList} from "../../types";
+import * as ScreenCapture from 'expo-screen-capture';
 
 const {width, height} = Dimensions.get('window');
 
@@ -32,12 +33,70 @@ interface ContentViewerScreenProps {
     route: ContentViewerScreenRouteProp;
 }
 
-const ContentViewerScreen = ({route}: ContentViewerScreenProps) => {
-    const {content} = route.params;
+// === ContentViewerScreen (updated, no imports/styles) ===
+const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
+    const { content } = route.params;
     const navigation = useNavigation<ContentViewerScreenNavigationProp>();
-    const {t} = useTranslation();
+    const { t } = useTranslation();
+
     const [imageLoading, setImageLoading] = useState(true);
     const [webViewLoading, setWebViewLoading] = useState(true);
+    const [focusKey, setFocusKey] = useState(0);
+    const [pdfShellUrl, setPdfShellUrl] = useState<string | null>(null);
+
+    const webRef = React.useRef<WebView>(null);
+    const appState = React.useRef(AppState.currentState);
+
+    // Enable/disable screenshot protection only while this screen is focused.
+    useFocusEffect(
+        React.useCallback(() => {
+            let cancelled = false;
+            const enable = async () => {
+                try {
+                    if (!cancelled) await ScreenCapture.preventScreenCaptureAsync();
+                } catch {}
+            };
+            enable();
+
+            // On every focus, bump key to guarantee a fresh surface (prevents black view)
+            setFocusKey((k) => k + 1);
+
+            return () => {
+                cancelled = true;
+                ScreenCapture.allowScreenCaptureAsync().catch(() => {});
+            };
+        }, [])
+    );
+
+    // Recover GPU surface after backgrounding
+    useEffect(() => {
+        const sub = AppState.addEventListener("change", (next) => {
+            const prev = appState.current;
+            appState.current = next;
+            if (prev.match(/background|inactive/) && next === "active") {
+                try {
+                    webRef.current?.reload();
+                } catch {
+                    setFocusKey((k) => k + 1);
+                }
+            }
+        });
+        return () => sub.remove();
+    }, []);
+
+    // Build Google Docs Viewer URL for in-app PDF viewing (like WhatsApp)
+    useEffect(() => {
+        if (content.media?.type === MediaEnum.DOCUMENT || content.media?.type === "DOCUMENT") {
+            const pdfLink = content.media?.link || "";
+            // Google Docs Viewer is the most reliable way to keep PDFs in-app
+            // It's trusted by iOS/Android WebView and won't trigger external browser
+            const googleDocsUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfLink)}`;
+            setPdfShellUrl(googleDocsUrl);
+            console.log('📄 Setting PDF URL for in-app viewing');
+        } else {
+            setPdfShellUrl(null);
+        }
+    }, [content]);
 
     const openExternally = async () => {
         if (content.media?.link) {
@@ -45,180 +104,194 @@ const ContentViewerScreen = ({route}: ContentViewerScreenProps) => {
             if (supported) {
                 await Linking.openURL(content.media.link);
             } else {
-                Alert.alert(
-                    t('error') || 'Error',
-                    t('cannotOpenLink') || 'Cannot open this link'
-                );
+                Alert.alert(t("error") || "Error", t("cannotOpenLink") || "Cannot open this link");
             }
         }
     };
 
     const renderImage = () => (
-        <View style={styles.imageScrollContainer}>
+        <View key={`img-${focusKey}`} style={styles.imageScrollContainer}>
             <ScrollView
-                style={{flex: 1}}
+                style={{ flex: 1 }}
                 contentContainerStyle={styles.imageScrollContent}
                 showsVerticalScrollIndicator={false}
                 showsHorizontalScrollIndicator={false}
                 bounces={false}
                 minimumZoomScale={1}
                 maximumZoomScale={3}
-                bouncesZoom={true}
-                scrollEnabled={true}
-                pinchGestureEnabled={true}
+                bouncesZoom
+                scrollEnabled
+                pinchGestureEnabled
             >
-                <View 
-                    style={styles.imageContainer}
-                    onStartShouldSetResponder={() => true}
-                    onResponderGrant={() => {}}
-                >
+                <View style={styles.imageContainer} onStartShouldSetResponder={() => true}>
                     {imageLoading && (
                         <View style={styles.imageLoaderContainer}>
-                            <ActivityIndicator
-                                size="large"
-                                color={Colors.primary}
-                            />
-                            <StyledText style={styles.loadingText}>
-                                {t('loadingDocument') || 'Loading...'}
-                            </StyledText>
+                            <ActivityIndicator size="large" color={Colors.primary} />
+                            <StyledText style={styles.loadingText}>{t("loadingDocument") || "Loading..."}</StyledText>
                         </View>
                     )}
                     <Image
-                        source={{uri: content.media?.link}}
+                        key={`img-el-${focusKey}`}
+                        source={{ uri: content.media?.link }}
                         style={styles.image}
                         resizeMode="contain"
                         onLoadStart={() => setImageLoading(true)}
                         onLoadEnd={() => setImageLoading(false)}
                         onError={() => {
                             setImageLoading(false);
-                            Alert.alert(
-                                t('error') || 'Error',
-                                t('errorLoadingImage') || 'Failed to load image'
-                            );
+                            Alert.alert(t("error") || "Error", t("errorLoadingImage") || "Failed to load image");
                         }}
                     />
-                    {/* Overlay to prevent long-press/context menu */}
-                    <View 
-                        style={styles.imageOverlay}
-                        pointerEvents="box-only"
-                    />
+                    <View style={styles.imageOverlay} pointerEvents="box-only" />
                 </View>
             </ScrollView>
-            
-            {/* Zoom instruction hint */}
+
             {!imageLoading && (
                 <View style={styles.zoomHint}>
                     <Ionicons name="expand-outline" size={16} color="rgba(255,255,255,0.8)" />
-                    <StyledText style={styles.zoomHintText}>
-                        Pinch to zoom
-                    </StyledText>
+                    <StyledText style={styles.zoomHintText}>{t("pinchToZoom") || "Pinch to zoom"}</StyledText>
                 </View>
             )}
-            
-            {/* Security watermark for images */}
+
             <View style={styles.imageWatermark} pointerEvents="none">
                 <Ionicons name="shield-checkmark" size={14} color="rgba(255,255,255,0.7)" />
-                <StyledText style={styles.imageWatermarkText}>Protected Content</StyledText>
+                <StyledText style={styles.imageWatermarkText}>{t("protectedContent") || "Protected Content"}</StyledText>
             </View>
         </View>
     );
 
-    const renderPDF = () => {
-        // Use Google Docs Viewer for better PDF rendering
-        const pdfUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(content.media?.link || '')}`;
-        
-        // Inject JavaScript to prevent right-click and download
-        const injectedJavaScript = `
-            (function() {
-                // Prevent context menu
-                document.addEventListener('contextmenu', function(e) {
-                    e.preventDefault();
-                    return false;
-                });
-                
-                // Prevent text selection
-                document.body.style.webkitUserSelect = 'none';
-                document.body.style.userSelect = 'none';
-                
-                // Prevent copy
-                document.addEventListener('copy', function(e) {
-                    e.preventDefault();
-                    return false;
-                });
-                
-                // Hide download buttons if any
-                const style = document.createElement('style');
-                style.innerHTML = \`
-                    [download], 
-                    a[href*="download"],
-                    button[title*="Download"],
-                    .download-btn { 
-                        display: none !important; 
-                    }
-                \`;
-                document.head.appendChild(style);
-            })();
-            true;
-        `;
-        
-        return (
-            <View style={styles.pdfContainer}>
-                {webViewLoading && (
-                    <View style={styles.webViewLoader}>
-                        <ActivityIndicator size="large" color={Colors.primary} />
-                        <StyledText style={styles.loadingText}>
-                            {t('loadingDocument') || 'Loading document...'}
-                        </StyledText>
-                    </View>
-                )}
-                <WebView
-                    source={{uri: pdfUrl}}
-                    style={styles.webView}
-                    onLoadStart={() => setWebViewLoading(true)}
-                    onLoadEnd={() => setWebViewLoading(false)}
-                    onError={() => setWebViewLoading(false)}
-                    scalesPageToFit
-                    javaScriptEnabled
-                    domStorageEnabled
-                    injectedJavaScript={injectedJavaScript}
-                    allowsInlineMediaPlayback
-                    mediaPlaybackRequiresUserAction
-                    // Prevent file downloads
-                    onShouldStartLoadWithRequest={(request) => {
-                        // Block download attempts
-                        if (request.url.includes('download') || request.url.includes('blob:')) {
-                            return false;
-                        }
-                        return true;
-                    }}
-                />
-                {/* Security watermark */}
-                <View style={styles.securityWatermark} pointerEvents="none">
-                    <Ionicons name="shield-checkmark" size={16} color="rgba(0,0,0,0.3)" />
-                    <StyledText style={styles.watermarkText}>Protected Content</StyledText>
+    const injectedPDFGuards = `
+    (function(){
+      // Hide download/print-like controls if any appear inside the HTML shell
+      const hide = () => {
+        const sel = [
+          '[download]','a[download]','a[href*="download"]','a[title*="Download"]',
+          'button[title*="Download"]','[aria-label*="Download"]','[aria-label*="download"]',
+          '[aria-label*="Print"]','[title*="Print"]'
+        ];
+        document.querySelectorAll(sel.join(',')).forEach(n=>{
+          n.style.display='none'; n.style.visibility='hidden'; n.style.pointerEvents='none';
+        });
+      };
+      hide();
+      const mo = new MutationObserver(hide);
+      mo.observe(document.documentElement, {subtree:true,childList:true,attributes:true});
+      addEventListener('copy', e => e.preventDefault(), true);
+      addEventListener('cut', e => e.preventDefault(), true);
+      addEventListener('contextmenu', e => e.preventDefault(), true);
+      document.body && (document.body.style.webkitUserSelect='none', document.body.style.userSelect='none');
+      true;
+    })();
+  `;
+
+    const renderPDF = () => (
+        <View key={`pdf-${focusKey}`} style={styles.pdfContainer}>
+            {webViewLoading && (
+                <View style={styles.webViewLoader}>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <StyledText style={styles.loadingText}>{t("loadingDocument") || "Loading document..."}</StyledText>
                 </View>
+            )}
+
+            <WebView
+                ref={webRef}
+                key={`wv-${focusKey}`}
+                source={pdfShellUrl ? { uri: pdfShellUrl } : undefined}
+                style={styles.webView}
+                onLoadStart={() => setWebViewLoading(true)}
+                onLoadEnd={() => setWebViewLoading(false)}
+                onError={(e) => {
+                    setWebViewLoading(false);
+                    Alert.alert(t("error") || "Error", t("failedToLoadDocument") || "Failed to load document. Please try again.");
+                }}
+                javaScriptEnabled={true}
+                domStorageEnabled={true}
+                // CRITICAL: Prevent opening new windows/tabs (keeps it in-app)
+                setSupportMultipleWindows={false}
+                allowsInlineMediaPlayback={false}
+                mediaPlaybackRequiresUserAction={true}
+                // Allow all origins for Google Docs Viewer
+                originWhitelist={["*"]}
+                // Allow mixed content for better compatibility
+                mixedContentMode="always"
+                // Enable caching for better performance
+                cacheEnabled={true}
+                incognito={false}
+                // Cookies needed for Google Docs Viewer
+                sharedCookiesEnabled={true}
+                thirdPartyCookiesEnabled={true}
+                // Keep rendering stable (prevents black screen)
+                renderToHardwareTextureAndroid={false}
+                androidLayerType="software"
+                // Keep PDF viewing inside the app - block external navigation
+                onShouldStartLoadWithRequest={(req) => {
+                    const url = (req?.url || "").toLowerCase();
+                    
+                    console.log('🔗 WebView navigation request:', url);
+                    
+                    // Block download/print attempts
+                    if (
+                        url.includes('/download') ||
+                        url.includes('?download') ||
+                        url.includes('&download') ||
+                        url.includes('print') ||
+                        url.startsWith('blob:') ||
+                        url.startsWith('data:application/')
+                    ) {
+                        console.log('🚫 Blocked download/print attempt');
+                        return false;
+                    }
+                    
+                    // Allow Google Docs Viewer and its resources (CRITICAL for in-app viewing)
+                    if (
+                        url.includes('docs.google.com') ||
+                        url.includes('drive.google.com') ||
+                        url.includes('googleusercontent.com') ||
+                        url.includes('gstatic.com')
+                    ) {
+                        console.log('✅ Allowed Google Docs Viewer resource');
+                        return true;
+                    }
+                    
+                    // Allow HTTPS for loading the actual PDF
+                    if (url.startsWith('https://') || url.startsWith('http://')) {
+                        console.log('✅ Allowed HTTPS resource');
+                        return true;
+                    }
+                    
+                    // Block everything else
+                    console.log('🚫 Blocked unknown navigation');
+                    return false;
+                }}
+                // iOS render-process death recovery
+                onContentProcessDidTerminate={() => {
+                    try { webRef.current?.reload(); } catch { setFocusKey((k) => k + 1); }
+                }}
+                injectedJavaScript={injectedPDFGuards}
+                // Enable zoom and proper scaling
+                scalesPageToFit={true}
+                // Start with loading indicator
+                startInLoadingState={true}
+                // Hide scrollbars for cleaner look
+                showsHorizontalScrollIndicator={false}
+                showsVerticalScrollIndicator={false}
+            />
+
+            <View style={styles.securityWatermark} pointerEvents="none">
+                <Ionicons name="shield-checkmark" size={14} color="rgba(0,0,0,0.4)" />
+                <StyledText style={styles.watermarkText}>{t("protected") || "Protected"}</StyledText>
             </View>
-        );
-    };
+        </View>
+    );
 
     const renderVideo = () => (
         <View style={styles.videoContainer}>
             <Ionicons name="play-circle-outline" size={80} color={Colors.primary} />
-            <StyledText style={styles.videoTitle}>
-                {t('videoContent') || 'Video Content'}
-            </StyledText>
-            <StyledText style={styles.videoDescription}>
-                {t('videoMessage') || 'Video playback will be available soon'}
-            </StyledText>
-            <TouchableOpacity
-                style={styles.openButton}
-                onPress={openExternally}
-                activeOpacity={0.8}
-            >
+            <StyledText style={styles.videoTitle}>{t("videoContent") || "Video Content"}</StyledText>
+            <StyledText style={styles.videoDescription}>{t("videoMessage") || "Video playback will be available soon"}</StyledText>
+            <TouchableOpacity style={styles.openButton} onPress={openExternally} activeOpacity={0.8}>
                 <Ionicons name="open-outline" size={20} color="#FFFFFF" />
-                <StyledText style={styles.openButtonText}>
-                    {t('openInBrowser') || 'Open in Browser'}
-                </StyledText>
+                <StyledText style={styles.openButtonText}>{t("openInBrowser") || "Open in Browser"}</StyledText>
             </TouchableOpacity>
         </View>
     );
@@ -226,40 +299,29 @@ const ContentViewerScreen = ({route}: ContentViewerScreenProps) => {
     const renderDefault = () => (
         <View style={styles.defaultContainer}>
             <Ionicons name="document-text-outline" size={80} color={Colors.primary} />
-            <StyledText style={styles.defaultTitle}>
-                {content.title}
-            </StyledText>
-            {content.description && (
-                <StyledText style={styles.defaultDescription}>
-                    {content.description}
-                </StyledText>
-            )}
+            <StyledText style={styles.defaultTitle}>{content.title}</StyledText>
+            {content.description && <StyledText style={styles.defaultDescription}>{content.description}</StyledText>}
             {content.media?.link && (
-                <TouchableOpacity
-                    style={styles.openButton}
-                    onPress={openExternally}
-                    activeOpacity={0.8}
-                >
+                <TouchableOpacity style={styles.openButton} onPress={openExternally} activeOpacity={0.8}>
                     <Ionicons name="open-outline" size={20} color="#FFFFFF" />
-                    <StyledText style={styles.openButtonText}>
-                        {t('openInBrowser') || 'Open in Browser'}
-                    </StyledText>
+                    <StyledText style={styles.openButtonText}>{t("openInBrowser") || "Open in Browser"}</StyledText>
                 </TouchableOpacity>
             )}
         </View>
     );
 
     const renderContent = () => {
-        if (!content.media?.link) {
-            return renderDefault();
-        }
-
-        switch (content.media?.type) {
+        if (!content.media?.link) return renderDefault();
+        const mediaType = content.media?.type;
+        switch (mediaType) {
             case MediaEnum.IMAGE:
+            case "IMAGE":
                 return renderImage();
             case MediaEnum.DOCUMENT:
+            case "DOCUMENT":
                 return renderPDF();
             case MediaEnum.VIDEO:
+            case "VIDEO":
                 return renderVideo();
             default:
                 return renderDefault();
@@ -269,14 +331,9 @@ const ContentViewerScreen = ({route}: ContentViewerScreenProps) => {
     return (
         <View style={styles.container}>
             <StatusBar barStyle="light-content" backgroundColor={Colors.primary} />
-            
-            {/* Header */}
+
             <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.goBack()}
-                    activeOpacity={0.7}
-                >
+                <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} activeOpacity={0.7}>
                     <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
                 </TouchableOpacity>
                 <View style={styles.headerContent}>
@@ -286,7 +343,6 @@ const ContentViewerScreen = ({route}: ContentViewerScreenProps) => {
                 </View>
             </View>
 
-            {/* Content */}
             {renderContent()}
         </View>
     );
@@ -330,6 +386,18 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#FFFFFF',
         fontFamily: FontsEnum.Poppins_600SemiBold,
+        marginBottom: 2,
+    },
+    protectionBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        marginTop: 4,
+    },
+    protectionBadgeText: {
+        fontSize: 10,
+        color: 'rgba(255, 255, 255, 0.8)',
+        fontFamily: FontsEnum.Poppins_400Regular,
     },
     imageScrollContainer: {
         flex: 1,
@@ -402,9 +470,9 @@ const styles = StyleSheet.create({
         borderRadius: 6,
     },
     watermarkText: {
-        fontSize: 10,
-        color: 'rgba(0,0,0,0.5)',
-        fontFamily: FontsEnum.Poppins_400Regular,
+        fontSize: 9,
+        color: 'rgba(0,0,0,0.6)',
+        fontFamily: FontsEnum.Poppins_600SemiBold,
     },
     imageWatermark: {
         position: 'absolute',
@@ -440,7 +508,7 @@ const styles = StyleSheet.create({
     loadingText: {
         marginTop: 16,
         fontSize: 14,
-        color: '#666666',
+        color: '#FFFFFF',
         fontFamily: FontsEnum.Poppins_400Regular,
     },
     openExternalButton: {
