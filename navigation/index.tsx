@@ -9,6 +9,10 @@ import useCachedResources from "../hooks/useCachedResources";
 import {useAuth} from "../hooks/useAuth";
 import {Host} from 'react-native-portalize';
 import HomeScreen from "../screens/school/HomeScreen";
+import CourseDetailScreen from "../screens/school/CourseDetailScreen";
+import ChapterDetailScreen from "../screens/school/ChapterDetailScreen";
+import SubsectionContentsScreen from "../screens/school/SubsectionContentsScreen";
+import ContentViewerScreen from "../screens/school/ContentViewerScreen";
 
 
 export default function Navigation({colorScheme}) {
@@ -47,6 +51,7 @@ function AuthNavigator() {
         <AuthStack.Navigator initialRouteName="Login" screenOptions={{headerShown: false}}>
             <AuthStack.Screen name="Login" component={LoginScreen}/>
             <AuthStack.Screen name="Signup" component={SignupScreen}/>
+
         </AuthStack.Navigator>
     );
 }
@@ -58,6 +63,10 @@ function RootNavigator() {
         <Stack.Navigator screenOptions={{headerShown: false}}>
             <Stack.Screen name="Root" component={HomeScreen}/>
             <Stack.Screen name="Home" component={HomeScreen}/>
+            <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
+            <Stack.Screen name="ChapterDetail" component={ChapterDetailScreen} />
+            <Stack.Screen name="SubsectionContents" component={SubsectionContentsScreen} />
+            <Stack.Screen name="ContentViewer" component={ContentViewerScreen} />
         </Stack.Navigator>
     );
 }

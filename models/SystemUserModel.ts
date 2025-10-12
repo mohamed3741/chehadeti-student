@@ -19,5 +19,7 @@ export class SystemUserModel {
     
     name?: string;
     isTelVerified: boolean;
+    classe: any;
+    classe: any;
 
 }

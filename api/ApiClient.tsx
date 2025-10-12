@@ -23,7 +23,8 @@ apiClient.addAsyncRequestTransform(async (request) => {
         request.url.endsWith("/refresh-token") ||
         request.url.endsWith("/request-password-reset") ||
         request.url.endsWith("/check-code-for-reset") ||
-        request.url.endsWith("/reset-password")
+        request.url.endsWith("/reset-password") ||
+        request.url.endsWith("/classes/list")
     )
         return;
     request.headers["Authorization"] = `Bearer ${token}`;

@@ -1,5 +1,5 @@
 
-
+import {CourseDTO, ChapterDTO, SubsectionDTO, ContentDTO} from './models/LMS';
 
 export type BottomTabParamList = {
     TabHome: undefined;
@@ -13,6 +13,10 @@ export type BottomTabParamList = {
 
 export type TabHomeParamList = {
     TabHomeScreen: undefined;
+    CourseDetail: {course: CourseDTO};
+    ChapterDetail: {chapter: ChapterDTO};
+    SubsectionContents: {subsection: SubsectionDTO};
+    ContentViewer: {content: ContentDTO};
 };
 
 export type TabOrderParamList = {
