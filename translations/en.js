@@ -726,5 +726,6 @@ export const en = {
     "videoMessage": "Video playback will be available soon",
     "cannotOpenLink": "Cannot open this link",
     "confirmLogout": "Confirm Logout",
-    "confirmLogoutMessage": "Are you sure you want to logout?"
+    "confirmLogoutMessage": "Are you sure you want to logout?",
+    "errorLoadingImage": "Failed to load image"
 };

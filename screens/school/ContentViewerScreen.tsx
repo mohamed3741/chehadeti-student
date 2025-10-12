@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import {
     View,
     StyleSheet,
@@ -12,7 +12,7 @@ import {
     ScrollView,
     Platform,
 } from 'react-native';
-import {useNavigation, RouteProp, useFocusEffect} from '@react-navigation/native';
+import {useNavigation, RouteProp} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
 import {StyledText} from "../../components/StyledText";
 import {FontsEnum} from "../../constants/FontsEnum";
@@ -22,7 +22,6 @@ import Colors from "../../constants/Colors";
 import {ContentDTO, MediaEnum} from "../../models/LMS";
 import {WebView} from 'react-native-webview';
 import {TabHomeParamList} from "../../types";
-import * as ScreenCapture from 'expo-screen-capture';
 
 const {width, height} = Dimensions.get('window');
 
@@ -40,35 +39,6 @@ const ContentViewerScreen = ({route}: ContentViewerScreenProps) => {
     const [imageLoading, setImageLoading] = useState(true);
     const [webViewLoading, setWebViewLoading] = useState(true);
 
-    // Prevent screenshots when screen is focused
-    useFocusEffect(
-        React.useCallback(() => {
-            const preventScreenshot = async () => {
-                try {
-                    await ScreenCapture.preventScreenCaptureAsync();
-                    console.log('Screenshot prevention enabled');
-                } catch (error) {
-                    console.error('Error enabling screenshot prevention:', error);
-                }
-            };
-
-            const allowScreenshot = async () => {
-                try {
-                    await ScreenCapture.allowScreenCaptureAsync();
-                    console.log('Screenshot prevention disabled');
-                } catch (error) {
-                    console.error('Error disabling screenshot prevention:', error);
-                }
-            };
-
-            preventScreenshot();
-
-            return () => {
-                allowScreenshot();
-            };
-        }, [])
-    );
-
     const openExternally = async () => {
         if (content.media?.link) {
             const supported = await Linking.canOpenURL(content.media.link);
@@ -84,43 +54,112 @@ const ContentViewerScreen = ({route}: ContentViewerScreenProps) => {
     };
 
     const renderImage = () => (
-        <ScrollView
-            style={styles.imageScrollContainer}
-            contentContainerStyle={styles.imageScrollContent}
-            showsVerticalScrollIndicator={false}
-            bounces={false}
-        >
-            <View 
-                style={styles.imageContainer}
-                onStartShouldSetResponder={() => true}
-                onResponderGrant={() => {}}
+        <View style={styles.imageScrollContainer}>
+            <ScrollView
+                style={{flex: 1}}
+                contentContainerStyle={styles.imageScrollContent}
+                showsVerticalScrollIndicator={false}
+                showsHorizontalScrollIndicator={false}
+                bounces={false}
+                minimumZoomScale={1}
+                maximumZoomScale={3}
+                bouncesZoom={true}
+                scrollEnabled={true}
+                pinchGestureEnabled={true}
             >
-                {imageLoading && (
-                    <ActivityIndicator
-                        size="large"
-                        color={Colors.primary}
-                        style={styles.imageLoader}
-                    />
-                )}
-                <Image
-                    source={{uri: content.media?.link}}
-                    style={styles.image}
-                    resizeMode="contain"
-                    onLoadStart={() => setImageLoading(true)}
-                    onLoadEnd={() => setImageLoading(false)}
-                    onError={() => setImageLoading(false)}
-                />
-                {/* Overlay to prevent long-press/context menu */}
                 <View 
-                    style={styles.imageOverlay}
-                    pointerEvents="box-only"
-                />
+                    style={styles.imageContainer}
+                    onStartShouldSetResponder={() => true}
+                    onResponderGrant={() => {}}
+                >
+                    {imageLoading && (
+                        <View style={styles.imageLoaderContainer}>
+                            <ActivityIndicator
+                                size="large"
+                                color={Colors.primary}
+                            />
+                            <StyledText style={styles.loadingText}>
+                                {t('loadingDocument') || 'Loading...'}
+                            </StyledText>
+                        </View>
+                    )}
+                    <Image
+                        source={{uri: content.media?.link}}
+                        style={styles.image}
+                        resizeMode="contain"
+                        onLoadStart={() => setImageLoading(true)}
+                        onLoadEnd={() => setImageLoading(false)}
+                        onError={() => {
+                            setImageLoading(false);
+                            Alert.alert(
+                                t('error') || 'Error',
+                                t('errorLoadingImage') || 'Failed to load image'
+                            );
+                        }}
+                    />
+                    {/* Overlay to prevent long-press/context menu */}
+                    <View 
+                        style={styles.imageOverlay}
+                        pointerEvents="box-only"
+                    />
+                </View>
+            </ScrollView>
+            
+            {/* Zoom instruction hint */}
+            {!imageLoading && (
+                <View style={styles.zoomHint}>
+                    <Ionicons name="expand-outline" size={16} color="rgba(255,255,255,0.8)" />
+                    <StyledText style={styles.zoomHintText}>
+                        Pinch to zoom
+                    </StyledText>
+                </View>
+            )}
+            
+            {/* Security watermark for images */}
+            <View style={styles.imageWatermark} pointerEvents="none">
+                <Ionicons name="shield-checkmark" size={14} color="rgba(255,255,255,0.7)" />
+                <StyledText style={styles.imageWatermarkText}>Protected Content</StyledText>
             </View>
-        </ScrollView>
+        </View>
     );
 
     const renderPDF = () => {
+        // Use Google Docs Viewer for better PDF rendering
         const pdfUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(content.media?.link || '')}`;
+        
+        // Inject JavaScript to prevent right-click and download
+        const injectedJavaScript = `
+            (function() {
+                // Prevent context menu
+                document.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+                
+                // Prevent text selection
+                document.body.style.webkitUserSelect = 'none';
+                document.body.style.userSelect = 'none';
+                
+                // Prevent copy
+                document.addEventListener('copy', function(e) {
+                    e.preventDefault();
+                    return false;
+                });
+                
+                // Hide download buttons if any
+                const style = document.createElement('style');
+                style.innerHTML = \`
+                    [download], 
+                    a[href*="download"],
+                    button[title*="Download"],
+                    .download-btn { 
+                        display: none !important; 
+                    }
+                \`;
+                document.head.appendChild(style);
+            })();
+            true;
+        `;
         
         return (
             <View style={styles.pdfContainer}>
@@ -141,17 +180,23 @@ const ContentViewerScreen = ({route}: ContentViewerScreenProps) => {
                     scalesPageToFit
                     javaScriptEnabled
                     domStorageEnabled
+                    injectedJavaScript={injectedJavaScript}
+                    allowsInlineMediaPlayback
+                    mediaPlaybackRequiresUserAction
+                    // Prevent file downloads
+                    onShouldStartLoadWithRequest={(request) => {
+                        // Block download attempts
+                        if (request.url.includes('download') || request.url.includes('blob:')) {
+                            return false;
+                        }
+                        return true;
+                    }}
                 />
-                <TouchableOpacity
-                    style={styles.openExternalButton}
-                    onPress={openExternally}
-                    activeOpacity={0.8}
-                >
-                    <Ionicons name="open-outline" size={20} color="#FFFFFF" />
-                    <StyledText style={styles.openExternalText}>
-                        {t('openInBrowser') || 'Open in Browser'}
-                    </StyledText>
-                </TouchableOpacity>
+                {/* Security watermark */}
+                <View style={styles.securityWatermark} pointerEvents="none">
+                    <Ionicons name="shield-checkmark" size={16} color="rgba(0,0,0,0.3)" />
+                    <StyledText style={styles.watermarkText}>Protected Content</StyledText>
+                </View>
             </View>
         );
     };
@@ -307,9 +352,76 @@ const styles = StyleSheet.create({
         position: 'absolute',
         zIndex: 1,
     },
+    imageLoaderContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#000000',
+        zIndex: 2,
+    },
+    imageOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        backgroundColor: 'transparent',
+        zIndex: 0,
+    },
+    zoomHint: {
+        position: 'absolute',
+        top: 20,
+        alignSelf: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        backgroundColor: 'rgba(0,0,0,0.6)',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 20,
+    },
+    zoomHintText: {
+        fontSize: 12,
+        color: 'rgba(255,255,255,0.9)',
+        fontFamily: FontsEnum.Poppins_400Regular,
+    },
     pdfContainer: {
         flex: 1,
         backgroundColor: '#FFFFFF',
+    },
+    securityWatermark: {
+        position: 'absolute',
+        bottom: 10,
+        left: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(255,255,255,0.8)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    watermarkText: {
+        fontSize: 10,
+        color: 'rgba(0,0,0,0.5)',
+        fontFamily: FontsEnum.Poppins_400Regular,
+    },
+    imageWatermark: {
+        position: 'absolute',
+        bottom: 20,
+        left: 20,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+    },
+    imageWatermarkText: {
+        fontSize: 11,
+        color: 'rgba(255,255,255,0.9)',
+        fontFamily: FontsEnum.Poppins_400Regular,
     },
     webView: {
         flex: 1,
