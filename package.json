@@ -92,6 +92,7 @@
     "expo-network": "~7.1.5",
     "expo-random": "~14.0.1",
     "expo-router": "~5.1.7",
+    "expo-screen-capture": "^8.0.8",
     "expo-secure-store": "~14.2.4",
     "expo-sharing": "~13.1.5",
     "expo-snackbar": "^1.0.0",

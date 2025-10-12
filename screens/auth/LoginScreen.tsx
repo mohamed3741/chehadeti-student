@@ -15,6 +15,7 @@ import {
 } from "react-native"
 import {LinearGradient} from "expo-linear-gradient"
 import {Ionicons} from "@expo/vector-icons"
+import CountryPicker, { Country, CountryCode } from 'react-native-country-picker-modal';
 import {FontsEnum} from "../../constants/FontsEnum"
 import {StyledText} from "../../components/StyledText"
 import {isValidPhone, trimTel} from "../../utils/functionHelpers"
@@ -25,9 +26,15 @@ import {useLoader} from "../../hooks/useLoader"
 import {useTranslation} from "react-i18next";
 import Colors from "../../constants/Colors"
 import {LoginResponse} from "../../models/LoginResponse";
+import LanguageModal from "../../components/LanguageModalize/LanguageModal";
 
 export default function LoginScreen({navigation, route}) {
     const [code, setCode] = useState("MR");
+    const [countryCode, setCountryCode] = useState<CountryCode>('MR');
+    const [country, setCountry] = useState<Country | null>(null);
+    const [callingCode, setCallingCode] = useState('222');
+    const [showCountryPicker, setShowCountryPicker] = useState(false);
+    const [showLanguageModal, setShowLanguageModal] = useState(false);
     const {
         storeToken,
         rememberUser,
@@ -60,11 +67,20 @@ export default function LoginScreen({navigation, route}) {
         })();
     }, []);
 
+    const onSelectCountry = (selectedCountry: Country) => {
+        setCountry(selectedCountry);
+        setCountryCode(selectedCountry.cca2);
+        setCallingCode(selectedCountry.callingCode[0]);
+        setCode(selectedCountry.cca2);
+    };
+
     const onLogin = async () => {
+        // Build phone number with calling code
+        const phoneWithCode = `+${callingCode}${emailOrPhone.trim()}`;
         const isPhone = isValidPhone(emailOrPhone, code);
 
         const data = isPhone
-            ? {username: `${trimTel(emailOrPhone, code)}`, password: password}
+            ? {username: phoneWithCode, password: password}
             : {username: emailOrPhone, password: password};
 
         try {
@@ -89,24 +105,22 @@ export default function LoginScreen({navigation, route}) {
                     loginData?.refresh_expires_in
                 );
                 await refreshUser();
+                removeLoader();
                 return;
-            } else if (!result?.ok) {
+            } else {
+                removeLoader();
                 if (result.status === 403) {
-                    Toast(t("userInactive"));
-                    return;
+                    Toast(t("userInactive") || "User inactive");
+                } else if (result.status === 404 || result.status === 401) {
+                    Toast(t("loginError") || "The login or password is incorrect");
+                } else {
+                    Toast(t("genericError") || "An error occurred. Please try again.");
                 }
-                if (result.status === 404 || result.status === 401) {
-                    Toast(t("loginError"));
-                    return;
-                }
-            } else if (!result?.ok) {
-                Toast(t("genericError"));
             }
         } catch (error) {
             console.error("Error during login: ", error);
-            Toast(t("genericError"));
-        } finally {
             removeLoader();
+            Toast(t("genericError") || "An error occurred. Please try again.");
         }
     };
 
@@ -124,7 +138,16 @@ export default function LoginScreen({navigation, route}) {
                     showsVerticalScrollIndicator={false}
                 >
                     <View style={[styles.contentContainer]}>
-                        <View style={styles.headerSection}>
+                         <View style={styles.headerSection}>
+                            {/* Language Button */}
+                            <TouchableOpacity
+                                style={styles.languageButton}
+                                onPress={() => setShowLanguageModal(true)}
+                                activeOpacity={0.7}
+                            >
+                                <Ionicons name="language" size={24} color="#FFFFFF" />
+                            </TouchableOpacity>
+
                             <View style={styles.logoContainer}>
                                 <Image
                                     source={require("./../../assets/images/icon.png")}
@@ -148,17 +171,29 @@ export default function LoginScreen({navigation, route}) {
                                         focusedField === "email" && styles.inputWrapperFocused,
                                     ]}
                                 >
-                                    <Ionicons
-                                        name="person-outline"
-                                        size={20}
-                                        color={focusedField === "email" ? Colors.primary : "#B0B0B0"}
-                                        style={styles.inputIcon}
-                                    />
+                                    <TouchableOpacity 
+                                        style={styles.countryPickerButton}
+                                        onPress={() => setShowCountryPicker(true)}
+                                    >
+                                        <CountryPicker
+                                            countryCode={countryCode}
+                                            withFilter
+                                            withFlag
+                                            withCallingCode
+                                            withEmoji
+                                            onSelect={onSelectCountry}
+                                            visible={showCountryPicker}
+                                            onClose={() => setShowCountryPicker(false)}
+                                        />
+                                        <StyledText style={styles.callingCodeText}>+{callingCode}</StyledText>
+                                        <Ionicons name="chevron-down" size={16} color="#B0B0B0" />
+                                    </TouchableOpacity>
+                                    <View style={styles.phoneSeparator} />
                                     <TextInput
-                                        style={styles.textInput}
-                                        placeholder={t("emailOrPhone")}
+                                        style={styles.phoneInput}
+                                        placeholder={t("phoneNumber") || "Phone number"}
                                         placeholderTextColor="#B0B0B0"
-                                        keyboardType="default"
+                                        keyboardType="phone-pad"
                                         onChangeText={setEmailOrPhone}
                                         value={emailOrPhone}
                                     />
@@ -185,6 +220,8 @@ export default function LoginScreen({navigation, route}) {
                                         onChangeText={setPassword}
                                         value={password}
                                         secureTextEntry={!showPassword}
+                                        onFocus={() => setFocusedField("password")}
+                                        onBlur={() => setFocusedField(null)}
                                     />
                                     <TouchableOpacity
                                         style={styles.passwordToggle}
@@ -281,9 +318,23 @@ export default function LoginScreen({navigation, route}) {
                                 <StyledText style={styles.digiWaveHighlight}>Digi Wave</StyledText>
                             </StyledText>
                         </TouchableOpacity>
-                    </View>
+                     </View>
                 </ScrollView>
             </KeyboardAvoidingView>
+
+            {/* Language Modal */}
+            <LanguageModal
+                modalVisible={showLanguageModal}
+                setModalVisible={setShowLanguageModal}
+                currentTheme={{
+                    main: Colors.primary,
+                    fontMainColor: '#333333',
+                    newFontcolor: '#666666',
+                    cardBackground: '#FFFFFF',
+                }}
+                showCrossButton={true}
+                dontClose={false}
+            />
         </View>
     );
 }
@@ -316,6 +367,24 @@ const styles = StyleSheet.create({
     headerSection: {
         alignItems: "center",
         marginBottom: 40,
+        position: "relative",
+    },
+    languageButton: {
+        position: "absolute",
+        top: 0,
+        right: 10,
+        padding: 10,
+        backgroundColor: "rgba(255, 255, 255, 0.15)",
+        borderRadius: 12,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.2,
+        shadowRadius: 4,
+        elevation: 4,
+        zIndex: 10,
     },
     logoContainer: {
         width: 100,
@@ -522,6 +591,30 @@ const styles = StyleSheet.create({
         color: "#FFF",
         fontFamily: FontsEnum.Poppins_500Medium,
         textDecorationLine: "underline",
+    },
+    countryPickerButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingRight: 8,
+    },
+    callingCodeText: {
+        fontSize: 15,
+        color: '#333333',
+        marginLeft: 8,
+        marginRight: 4,
+        fontFamily: FontsEnum.Poppins_500Medium,
+    },
+    phoneSeparator: {
+        width: 1,
+        height: 24,
+        backgroundColor: '#E9ECEF',
+        marginHorizontal: 8,
+    },
+    phoneInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#333333',
+        fontFamily: FontsEnum.Poppins_400Regular,
     },
 
 

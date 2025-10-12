@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
     StyleSheet,
@@ -11,6 +11,7 @@ import {
     Image,
     Animated,
     Modal,
+    FlatList,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,6 +27,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useTranslation } from 'react-i18next';
 import Colors from '../../constants/Colors';
 import { LoginResponse } from '../../models/LoginResponse';
+import { ClasseDTO } from '../../models/UserModel';
 
 interface FormErrors {
     email?: string;
@@ -34,6 +36,7 @@ interface FormErrors {
     firstName?: string;
     lastName?: string;
     tel?: string;
+    classe?: string;
 }
 
 export default function SignupScreen({ navigation }: any) {
@@ -62,6 +65,11 @@ export default function SignupScreen({ navigation }: any) {
     const [callingCode, setCallingCode] = useState('222');
     const [showCountryPicker, setShowCountryPicker] = useState(false);
     
+    // Class selection state
+    const [classes, setClasses] = useState<ClasseDTO[]>([]);
+    const [selectedClass, setSelectedClass] = useState<ClasseDTO | null>(null);
+    const [showClassPicker, setShowClassPicker] = useState(false);
+    
     // Refs for inputs
     const firstNameRef = useRef<TextInput>(null);
     const lastNameRef = useRef<TextInput>(null);
@@ -69,6 +77,22 @@ export default function SignupScreen({ navigation }: any) {
     const emailRef = useRef<TextInput>(null);
     const passwordRef = useRef<TextInput>(null);
     const confirmPasswordRef = useRef<TextInput>(null);
+
+    // Fetch classes on mount
+    useEffect(() => {
+        fetchClasses();
+    }, []);
+
+    const fetchClasses = async () => {
+        try {
+            const result = await StudentApi.getClasses();
+            if (result?.ok && result?.data) {
+                setClasses(result.data);
+            }
+        } catch (error) {
+            console.error('Error fetching classes:', error);
+        }
+    };
 
     const updateField = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -127,6 +151,11 @@ export default function SignupScreen({ navigation }: any) {
             newErrors.confirmPassword = t('signupErrorPasswordsDoNotMatch') || 'Passwords do not match. Please try again';
         }
         
+        // Class validation
+        if (!selectedClass) {
+            newErrors.classe = t('signupErrorClassRequired') || 'Please select a class';
+        }
+        
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -148,7 +177,8 @@ export default function SignupScreen({ navigation }: any) {
                 firstName: formData.firstName.trim(),
                 lastName: formData.lastName.trim(),
                 tel: fullPhone,
-                username : fullPhone
+                username: fullPhone,
+                classe: selectedClass ? { id: selectedClass.id } : undefined
             };
 
             // Step 1: Create account
@@ -176,33 +206,13 @@ export default function SignupScreen({ navigation }: any) {
                     
                     // Step 4: Refresh user data in Redux
                     await refreshUser();
-                    
+                    Toast(t('welcomeMessage') || 'Welcome! Your account has been created successfully.');
+
                     // Step 5: Get fresh user data from API to check validation status
-                    const userResult = await UserApi.getMe();
-                    
+
                     removeLoader();
                     
-                    if (userResult?.ok && userResult?.data) {
-                        const userData = userResult.data;
-                        
-                        console.log('User validation status:', userData?.validationStatus);
-                        
-                        Toast(t('welcomeMessage') || 'Welcome! Your account has been created successfully.');
-                        
-                        // Check validation status from fresh data
-                        setTimeout(() => {
-                            if (userData?.validationStatus === 'PENDING') {
-                                console.log('Showing pending validation modal');
-                                setShowVerificationModal(true);
-                            } else {
-                                console.log('User is validated, automatic navigation will occur');
-                            }
-                            // If not PENDING, navigation will happen automatically via app navigation
-                        }, 500);
-                    } else {
-                        console.error('Failed to fetch user data after login');
-                        Toast(t('welcomeMessage') || 'Welcome! Your account has been created successfully.');
-                    }
+
                 } else {
                     removeLoader();
                     Toast(t('signupSuccessLoginFailed') || 'Account created! Please login manually.');
@@ -361,6 +371,37 @@ export default function SignupScreen({ navigation }: any) {
                             </View>
                             {errors.tel && (
                                 <StyledText style={styles.errorText}>{errors.tel}</StyledText>
+                            )}
+                        </View>
+
+                        {/* Class Picker */}
+                        <View style={styles.inputContainer}>
+                            <StyledText style={styles.inputLabel}>
+                                {t('class') || 'Class'}
+                            </StyledText>
+                            <TouchableOpacity
+                                style={[
+                                    styles.inputWrapper,
+                                    errors.classe && styles.inputWrapperError,
+                                ]}
+                                onPress={() => setShowClassPicker(true)}
+                            >
+                                <Ionicons
+                                    name="school-outline"
+                                    size={20}
+                                    color="#B0B0B0"
+                                    style={styles.inputIcon}
+                                />
+                                <StyledText style={[
+                                    styles.classPlaceholder,
+                                    selectedClass && styles.classSelected
+                                ]}>
+                                    {selectedClass ? selectedClass.name : (t('selectClass') || 'Select your class')}
+                                </StyledText>
+                                <Ionicons name="chevron-down" size={20} color="#B0B0B0" />
+                            </TouchableOpacity>
+                            {errors.classe && (
+                                <StyledText style={styles.errorText}>{errors.classe}</StyledText>
                             )}
                         </View>
 
@@ -531,62 +572,66 @@ export default function SignupScreen({ navigation }: any) {
                 </ScrollView>
             </KeyboardAvoidingView>
 
-            {/* Verification Status Modal */}
+            {/* Class Picker Modal */}
             <Modal
-                visible={showVerificationModal}
+                visible={showClassPicker}
                 transparent
-                animationType="fade"
-                onRequestClose={handleVerificationModalClose}
+                animationType="slide"
+                onRequestClose={() => setShowClassPicker(false)}
             >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContent}>
-                        <View style={styles.modalIconContainer}>
-                            <View style={styles.pendingIconWrapper}>
-                                <Ionicons name="time-outline" size={80} color={Colors.primary} />
-                            </View>
-                        </View>
-
-                        <StyledText style={styles.modalTitle}>
-                            {t('accountPendingActivation') || 'Account Pending Activation'}
-                        </StyledText>
-
-                        <StyledText style={styles.modalMessage}>
-                            {t('accountPendingMessage') || 'Your account has been created successfully! Please contact the administrator to activate your account.'}
-                        </StyledText>
-
-                        <View style={styles.infoBox}>
-                            <Ionicons name="information-circle-outline" size={22} color={Colors.primary} />
-                            <StyledText style={styles.infoText}>
-                                {t('activationNoticeMessage') || 'You will be notified once your account is activated and you can access all features.'}
+                <View style={styles.classModalOverlay}>
+                    <View style={styles.classModalContent}>
+                        <View style={styles.classModalHeader}>
+                            <StyledText style={styles.classModalTitle}>
+                                {t('selectClass') || 'Select Class'}
                             </StyledText>
-                        </View>
-
-                        <View style={styles.contactBox}>
-                            <Ionicons name="call-outline" size={20} color="#666666" />
-                            <StyledText style={styles.contactText}>
-                                {t('contactAdminInstruction') || 'Contact your administrator for quick activation'}
-                            </StyledText>
-                        </View>
-
-                        <TouchableOpacity
-                            style={styles.modalButton}
-                            onPress={handleVerificationModalClose}
-                            activeOpacity={0.8}
-                        >
-                            <LinearGradient
-                                colors={[Colors.primary, '#8B5FCF']}
-                                style={styles.modalButtonGradient}
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
+                            <TouchableOpacity
+                                onPress={() => setShowClassPicker(false)}
+                                style={styles.classModalClose}
                             >
-                                <StyledText style={styles.modalButtonText}>
-                                    {t('understood') || 'I Understand'}
-                                </StyledText>
-                            </LinearGradient>
-                        </TouchableOpacity>
+                                <Ionicons name="close" size={24} color="#666666" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <FlatList
+                            data={classes}
+                            keyExtractor={(item) => item.id.toString()}
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
+                                    style={[
+                                        styles.classItem,
+                                        selectedClass?.id === item.id && styles.classItemSelected
+                                    ]}
+                                    onPress={() => {
+                                        setSelectedClass(item);
+                                        setShowClassPicker(false);
+                                        if (errors.classe) {
+                                            setErrors(prev => ({ ...prev, classe: undefined }));
+                                        }
+                                    }}
+                                >
+                                    <View style={styles.classItemContent}>
+                                        <StyledText style={styles.className}>
+                                            {item.name}
+                                        </StyledText>
+                                        {item.description && (
+                                            <StyledText style={styles.classDescription}>
+                                                {item.description}
+                                            </StyledText>
+                                        )}
+                                    </View>
+                                    {selectedClass?.id === item.id && (
+                                        <Ionicons name="checkmark-circle" size={24} color={Colors.primary} />
+                                    )}
+                                </TouchableOpacity>
+                            )}
+                            ItemSeparatorComponent={() => <View style={styles.classSeparator} />}
+                            showsVerticalScrollIndicator={false}
+                        />
                     </View>
                 </View>
             </Modal>
+
         </View>
     );
 }
@@ -917,6 +962,77 @@ const styles = StyleSheet.create({
     },
     modalButtonIcon: {
         marginLeft: 4,
+    },
+    classPlaceholder: {
+        flex: 1,
+        fontSize: 15,
+        color: '#B0B0B0',
+        fontFamily: FontsEnum.Poppins_400Regular,
+    },
+    classSelected: {
+        color: '#333333',
+    },
+    classModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    classModalContent: {
+        backgroundColor: '#FFFFFF',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingTop: 20,
+        paddingBottom: 40,
+        maxHeight: '70%',
+    },
+    classModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E9ECEF',
+    },
+    classModalTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#1F2937',
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+    },
+    classModalClose: {
+        padding: 4,
+    },
+    classItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        paddingVertical: 16,
+    },
+    classItemSelected: {
+        backgroundColor: 'rgba(106, 53, 193, 0.05)',
+    },
+    classItemContent: {
+        flex: 1,
+        marginRight: 12,
+    },
+    className: {
+        fontSize: 16,
+        fontWeight: '500',
+        color: '#1F2937',
+        fontFamily: FontsEnum.Poppins_500Medium,
+        marginBottom: 4,
+    },
+    classDescription: {
+        fontSize: 13,
+        color: '#6B7280',
+        fontFamily: FontsEnum.Poppins_400Regular,
+    },
+    classSeparator: {
+        height: 1,
+        backgroundColor: '#F3F4F6',
+        marginHorizontal: 20,
     },
 });
 

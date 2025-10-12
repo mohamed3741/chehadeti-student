@@ -1,9 +1,31 @@
 import * as React from 'react';
 import {createDrawerNavigator} from '@react-navigation/drawer';
+import {createStackNavigator} from '@react-navigation/stack';
 import CustomDrawerContent from "../components/Drawer";
 import HomeScreen from "../screens/school/HomeScreen";
+import CourseDetailScreen from "../screens/school/CourseDetailScreen";
+import ChapterDetailScreen from "../screens/school/ChapterDetailScreen";
+import SubsectionContentsScreen from "../screens/school/SubsectionContentsScreen";
+import ContentViewerScreen from "../screens/school/ContentViewerScreen";
 
 const Drawer = createDrawerNavigator();
+const Stack = createStackNavigator();
+
+function HomeStack() {
+    return (
+        <Stack.Navigator
+            screenOptions={{
+                headerShown: false,
+            }}
+        >
+            <Stack.Screen name="TabHomeScreen" component={HomeScreen} />
+            <Stack.Screen name="CourseDetail" component={CourseDetailScreen} />
+            <Stack.Screen name="ChapterDetail" component={ChapterDetailScreen} />
+            <Stack.Screen name="SubsectionContents" component={SubsectionContentsScreen} />
+            <Stack.Screen name="ContentViewer" component={ContentViewerScreen} />
+        </Stack.Navigator>
+    );
+}
 
 export default function DrawerNavigator() {
 
@@ -21,7 +43,7 @@ export default function DrawerNavigator() {
             headerShown: false
         }}
     >
-        <Drawer.Screen name="Home" component={HomeScreen} options={{title: 'Orders overview'}}/>
+        <Drawer.Screen name="Home" component={HomeStack} options={{title: 'Home'}}/>
     </Drawer.Navigator>);
 }
 

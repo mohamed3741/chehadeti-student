@@ -109,7 +109,7 @@ export const useAuth = () => {
                     token: null,
                     expoToken: null
                 }
-            await UserApi.saveUserDevice(body)
+            //await UserApi.saveUserDevice(body)
         }
     }
 

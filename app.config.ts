@@ -8,20 +8,6 @@ const isInteg = process.env.ENVIRONMENT === "integration";
 
 export default ({config}: ConfigContext) => {
     let customConfig = {} ;
-    if (isDev) {
-        customConfig = {
-            name: 'MarsaRestaurant (DEV)',
-            scheme: "marsarestaurant-dev",
-            ios: {
-                ...config?.ios,
-                bundleIdentifier: 'com.marsadrive.restaurant.dev',
-            },
-            android: {
-                 ...config?.android,
-                package: 'com.marsadrive.restaurant.dev',
-            }
-        }
-    }
     if (isStg) {
         customConfig = {
             name: 'Chehadeti App(STG)',

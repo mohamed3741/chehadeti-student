@@ -7,8 +7,7 @@ export class UserModel {
 
     // From StudentDTO
     id?: number;
-    validationStatus?: string; // PENDING, VALIDATED, REJECTED, etc.
-    validatedAt?: string;
+
 
     // From UserDTO
     type?: string; // STUDENT, ADMIN, etc.
@@ -23,13 +22,24 @@ export class UserModel {
     name?: string;
 }
 
+// Class DTO
+export interface ClasseDTO {
+    id: number;
+    code?: string;
+    name: string;
+    description?: string;
+    sortId?: number;
+    teacherId?: number;
+}
+
 // Student DTO for authentication (extends UserModel)
 export interface StudentAuthDTO extends UserModel {
     validationStatus?: string;
     validatedAt?: string;
+    classe?: ClasseDTO;
+    isTelVerified?: boolean;
 }
 
-// Keycloak Access Token Response
 export interface AccessTokenResponse {
     access_token: string;
     expires_in: number;

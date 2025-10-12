@@ -2,22 +2,17 @@
   "expo": {
     "name": "Chehadeti App",
     "slug": "chehadeti-app",
-    "version": "0.0.28",
+    "version": "0.0.30",
     "orientation": "portrait",
     "jsEngine": "hermes",
     "icon": "./assets/icons/icon.png",
     "scheme": "chehadeti-app",
     "userInterfaceStyle": "automatic",
     "updates": {
-      "url": "https://u.expo.dev/2bb20f9b-cf94-43e0-b1f8-f71fc164817c"
+      "url": "https://u.expo.dev/4abaa9ee-c3c1-40bb-930b-ddad5625239f"
     },
     "runtimeVersion": {
       "policy": "appVersion"
-    },
-    "extra": {
-      "eas": {
-        "projectId": "e09a2096-53e0-4cf4-bb0e-218076521438"
-      }
     },
     "splash": {
       "image": "./assets/images/logo-splash.png",
@@ -84,6 +79,12 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "4abaa9ee-c3c1-40bb-930b-ddad5625239f"
+      }
+    }
   }
 }
