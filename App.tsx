@@ -25,7 +25,6 @@ import {
 import {getData} from "./utils/AsyncStorage";
 import {DataKey} from "./models/Static";
 import {useAppNetInfo} from "./hooks/useAppNetInfo";
-import {useLang} from "./hooks/useLang";
 import * as SplashScreen from "expo-splash-screen";
 import {ActionSheetProvider} from "@expo/react-native-action-sheet";
 import {initI18n} from "./i18next";
@@ -36,7 +35,6 @@ export default App;
 
 function App() {
     const {isInternetReachable, checkNetwork} = useAppNetInfo(true);
-    const {currentLangCode} = useLang();
 
     let [fontsLoaded] = useFonts({
         Poppins_700Bold,
@@ -46,11 +44,7 @@ function App() {
         Poppins_300Light
     });
 
-    useEffect(() => {
-        if (currentLangCode) {
-            moment.locale(currentLangCode);
-        }
-    }, [currentLangCode]);
+
 
     moment.relativeTimeThreshold('ss', 0);
 

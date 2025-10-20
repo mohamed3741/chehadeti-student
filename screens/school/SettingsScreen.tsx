@@ -17,7 +17,7 @@ import {Ionicons} from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
 import {LinearGradient} from "expo-linear-gradient";
 import {TabHomeParamList} from "../../types";
-import {useLang} from "../../hooks/useLang";
+import {setAppLanguage} from "../../i18next";
 
 type SettingsScreenNavigationProp = StackNavigationProp<TabHomeParamList, 'Settings'>;
 
@@ -25,8 +25,7 @@ interface SettingsScreenProps {}
 
 const SettingsScreen: React.FC<SettingsScreenProps> = () => {
     const navigation = useNavigation<SettingsScreenNavigationProp>();
-    const {t} = useTranslation();
-    const {currentLangCode, changeLanguage} = useLang();
+    const {t, i18n} = useTranslation();
 
     const handleLanguageChange = () => {
         Alert.alert(
@@ -35,15 +34,15 @@ const SettingsScreen: React.FC<SettingsScreenProps> = () => {
             [
                 {
                     text: "English",
-                    onPress: () => changeLanguage('en'),
+                    onPress: () => setAppLanguage('en'),
                 },
                 {
                     text: "العربية",
-                    onPress: () => changeLanguage('ar'),
+                    onPress: () => setAppLanguage('ar'),
                 },
                 {
                     text: "Français",
-                    onPress: () => changeLanguage('fr'),
+                    onPress: () => setAppLanguage('fr'),
                 },
                 {
                     text: t("cancel") || "Cancel",
@@ -147,7 +146,7 @@ const SettingsScreen: React.FC<SettingsScreenProps> = () => {
                             description={t("selectLanguageMessage") || "Choose your preferred language"}
                             onPress={handleLanguageChange}
                             showArrow={true}
-                            rightText={getLanguageName(currentLangCode)}
+                            rightText={getLanguageName(i18n.language)}
                         />
                     </View>
                 </View>
