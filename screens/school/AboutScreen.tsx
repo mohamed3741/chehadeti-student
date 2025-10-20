@@ -6,7 +6,7 @@ import {
     StatusBar,
     ScrollView,
     Linking,
-    Dimensions,
+    Dimensions, Image,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
@@ -101,7 +101,11 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
                 {/* App Logo and Title */}
                 <View style={styles.logoSection}>
                     <View style={styles.logoContainer}>
-                        <Ionicons name="school" size={60} color={Colors.primary} />
+                        <Image
+                            source={require('../../assets/icons/icon.png')} 
+                            style={styles.appLogo}
+                            resizeMode="contain"
+                        />
                     </View>
                     <StyledText style={styles.appTitle}>Chehadeti</StyledText>
                     <StyledText style={styles.appTagline}>{t("lmsTagline") || "Learning Management System"}</StyledText>
@@ -167,7 +171,11 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
                 <View style={styles.section}>
                     <StyledText style={styles.sectionTitle}>{t("developedBy") || "Developed By"}</StyledText>
                     
-                    <View style={styles.developerCard}>
+                    <TouchableOpacity 
+                        style={styles.developerCard}
+                        onPress={handleWebsitePress}
+                        activeOpacity={0.7}
+                    >
                         <View style={styles.developerIcon}>
                             <Ionicons name="code-slash" size={32} color={Colors.primary} />
                         </View>
@@ -177,7 +185,10 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
                                 {t("developerDescription") || "Professional software development company specializing in educational technology solutions."}
                             </StyledText>
                         </View>
-                    </View>
+                        <View style={styles.developerArrow}>
+                            <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
+                        </View>
+                    </TouchableOpacity>
                 </View>
 
                 {/* Footer */}
@@ -257,6 +268,10 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 4,
         marginBottom: 20,
+    },
+    appLogo: {
+        width: 60,
+        height: 60,
     },
     appTitle: {
         fontSize: 32,
@@ -426,6 +441,9 @@ const styles = StyleSheet.create({
         color: '#6B7280',
         fontFamily: FontsEnum.Poppins_400Regular,
         lineHeight: 20,
+    },
+    developerArrow: {
+        marginLeft: 12,
     },
     footer: {
         alignItems: 'center',

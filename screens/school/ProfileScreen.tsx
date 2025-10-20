@@ -327,20 +327,12 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     profileCard: {
-        backgroundColor: '#FFFFFF',
         borderRadius: 16,
         padding: 24,
-        marginTop: -30,
+        marginTop: -10,
         marginBottom: 24,
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-        elevation: 4,
     },
     avatarContainer: {
         position: 'relative',
