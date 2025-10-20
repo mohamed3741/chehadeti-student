@@ -2,7 +2,7 @@
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
     "license": "UNLICENSED",
-    "start": "expo start --go",
+    "start": "expo start -c --go",
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",

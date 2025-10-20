@@ -160,12 +160,6 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
                             value="+222 3684 1098"
                             onPress={() => Linking.openURL('tel:+22236841098')}
                         />
-                        <ContactItem
-                            icon="globe-outline"
-                            title={t("website") || "Website"}
-                            value="www.digiwave-tech.com"
-                            onPress={handleWebsitePress}
-                        />
                     </View>
                 </View>
 
@@ -191,9 +185,7 @@ const AboutScreen: React.FC<AboutScreenProps> = () => {
                     <StyledText style={styles.footerText}>
                         {t("allRightsReserved") || "All rights reserved."}
                     </StyledText>
-                    <StyledText style={styles.footerText}>
-                        {t("poweredBy") || "Powered by"} Digi Wave
-                    </StyledText>
+
                 </View>
 
                 {/* Bottom Spacing */}
