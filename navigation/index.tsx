@@ -12,6 +12,10 @@ import CourseDetailScreen from "../screens/school/CourseDetailScreen";
 import ChapterDetailScreen from "../screens/school/ChapterDetailScreen";
 import SubsectionContentsScreen from "../screens/school/SubsectionContentsScreen";
 import ContentViewerScreen from "../screens/school/ContentViewerScreen";
+import ProfileScreen from "../screens/school/ProfileScreen";
+import SettingsScreen from "../screens/school/SettingsScreen";
+import AboutScreen from "../screens/school/AboutScreen";
+import EditPasswordScreen from "../screens/school/EditPasswordScreen";
 
 
 export default function Navigation({colorScheme}) {
@@ -63,6 +67,10 @@ function RootNavigator() {
             <Stack.Screen name="ChapterDetail" component={ChapterDetailScreen} />
             <Stack.Screen name="SubsectionContents" component={SubsectionContentsScreen} />
             <Stack.Screen name="ContentViewer" component={ContentViewerScreen} />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
+            <Stack.Screen name="About" component={AboutScreen} />
+            <Stack.Screen name="EditPassword" component={EditPasswordScreen} />
         </Stack.Navigator>
     );
 }

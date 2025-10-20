@@ -59,7 +59,7 @@ const HomeScreen = () => {
             console.log('No class ID found for user');
             return;
         }
-        
+
         try {
             setLoading(true);
             console.log('Fetching courses for class ID:', connectedUser.classe.id);
@@ -69,7 +69,7 @@ const HomeScreen = () => {
 
             if (result?.ok) {
                 if (result?.data && Array.isArray(result.data)) {
-                    const sortedCourses = result.data.sort((a, b) => 
+                    const sortedCourses = result.data.sort((a, b) =>
                         (a.sortId || 0) - (b.sortId || 0)
                     );
                     console.log('Setting courses:', sortedCourses.length, 'courses');
@@ -308,7 +308,8 @@ const HomeScreen = () => {
                             </View>
                             <TouchableOpacity
                                 style={styles.profileButton}
-                                onPress={confirmLogout}
+                                onPress={() => navigation.navigate('Profile')}
+                                activeOpacity={0.7}
                             >
                                 <Ionicons name="person-circle-outline" size={32} color={Colors.primary} />
                             </TouchableOpacity>
