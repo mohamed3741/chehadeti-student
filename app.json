@@ -34,7 +34,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo-splash.png",
+        "foregroundImage": "./assets/icons/icon.png",
         "backgroundColor": "#FFFFFF"
       },
       "permissions": [

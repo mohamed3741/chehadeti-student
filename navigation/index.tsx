@@ -5,7 +5,6 @@ import LinkingConfiguration from './LinkingConfiguration';
 import LoginScreen from "../screens/auth/LoginScreen";
 import SignupScreen from "../screens/auth/SignupScreen";
 import {navigationRef} from "../utils/CustomeNavigate";
-import useCachedResources from "../hooks/useCachedResources";
 import {useAuth} from "../hooks/useAuth";
 import {Host} from 'react-native-portalize';
 import HomeScreen from "../screens/school/HomeScreen";
@@ -18,15 +17,12 @@ import ContentViewerScreen from "../screens/school/ContentViewerScreen";
 export default function Navigation({colorScheme}) {
     const {connectedUser, token} = useAuth();
     const [sessionOpened, setSessionOpened] = useState(false);
-    const isLoadingComplete = useCachedResources();
     const navigationReadyRef = useRef(false);
 
 
     useEffect(() => {
-        if (isLoadingComplete) {
-            setSessionOpened(Boolean(token));
-        }
-    }, [token, isLoadingComplete]);
+        setSessionOpened(Boolean(token));
+    }, [token]);
 
     return (
         <Host>
@@ -38,7 +34,7 @@ export default function Navigation({colorScheme}) {
                 linking={LinkingConfiguration}
                 theme={colorScheme === 'dark' ? DarkTheme : DefaultTheme}
             >
-                {isLoadingComplete && (sessionOpened ? <RootNavigator/> : <AuthNavigator/>)}
+                {sessionOpened ? <RootNavigator/> : <AuthNavigator/>}
             </NavigationContainer>
         </Host>
     );

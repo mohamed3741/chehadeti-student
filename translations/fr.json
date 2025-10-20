@@ -47,6 +47,12 @@
   "pinchToZoom": "Pincez pour zoomer",
   "protectedContent": "Contenu Protégé",
   "protected": "Protégé",
+  "screenshotBlocked": "Capture d'écran bloquée",
+  "downloadBlocked": "Téléchargement bloqué",
+  "printBlocked": "Impression bloquée",
+  "viewInApp": "Voir dans l'application",
+  "documentNotAvailable": "Document non disponible",
+  "documentNotAvailableMessage": "Ce document ne peut pas être affiché pour le moment.",
   "failedToLoadDocument": "Échec du chargement du document. Veuillez réessayer."
 }
 

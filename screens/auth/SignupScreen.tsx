@@ -28,6 +28,7 @@ import { useTranslation } from 'react-i18next';
 import Colors from '../../constants/Colors';
 import { LoginResponse } from '../../models/LoginResponse';
 import { ClasseDTO } from '../../models/UserModel';
+import { writingDir, textAlignFor } from '../../i18next';
 
 interface FormErrors {
     email?: string;
@@ -43,6 +44,10 @@ export default function SignupScreen({ navigation }: any) {
     const { t } = useTranslation();
     const { setLoader, removeLoader, isLoading } = useLoader();
     const { storeToken, refreshUser, connectedUser } = useAuth();
+    
+    // RTL detection
+    const isRTL = writingDir() === 'rtl';
+    const textAlign = textAlignFor();
     
     // Form fields
     const [formData, setFormData] = useState({
@@ -558,7 +563,7 @@ export default function SignupScreen({ navigation }: any) {
                         </TouchableOpacity>
 
                         {/* Login Link */}
-                        <View style={styles.loginLinkContainer}>
+                        <View style={[styles.loginLinkContainer, isRTL && styles.loginLinkContainerRTL]}>
                             <StyledText style={styles.loginLinkText}>
                                 {t('alreadyHaveAccount') || 'Already have an account?'}{' '}
                             </StyledText>
@@ -1033,6 +1038,9 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: '#F3F4F6',
         marginHorizontal: 20,
+    },
+    loginLinkContainerRTL: {
+        flexDirection: 'row-reverse',
     },
 });
 

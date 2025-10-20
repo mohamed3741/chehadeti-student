@@ -29,6 +29,7 @@ import {useLang} from "./hooks/useLang";
 import * as SplashScreen from "expo-splash-screen";
 import {ActionSheetProvider} from "@expo/react-native-action-sheet";
 import {initI18n} from "./i18next";
+import useCachedResources from './hooks/useCachedResources';
 
 
 export default App;
@@ -53,7 +54,6 @@ function App() {
 
     moment.relativeTimeThreshold('ss', 0);
 
-
     useEffect(() => {
         (async () => {
             await SplashScreen.preventAutoHideAsync();
@@ -62,23 +62,39 @@ function App() {
         })()
     }, []);
 
-
     const colorScheme = useColorScheme();
-    if (!fontsLoaded) return null;
+    
+    if (!fontsLoaded) {
+        return null;
+    }
 
     return (
         <ActionSheetProvider>
             <GestureHandlerRootView style={{flex: 1}}>
                 <SafeAreaProvider style={{backgroundColor: '#FFF'}} key={makeId()}>
                     <Store>
-                        <Navigation colorScheme={colorScheme}/>
-                        <StatusBar backgroundColor='black'/>
+                        <AppContent colorScheme={colorScheme}/>
                     </Store>
                 </SafeAreaProvider>
             </GestureHandlerRootView>
         </ActionSheetProvider>
     );
 
+}
+
+function AppContent({colorScheme}) {
+    const isLoadingComplete = useCachedResources();
+    
+    if (!isLoadingComplete) {
+        return null;
+    }
+    
+    return (
+        <>
+            <Navigation colorScheme={colorScheme}/>
+            <StatusBar backgroundColor='black'/>
+        </>
+    );
 }
 
 AppRegistry.registerComponent('MarsaRide', () => App);

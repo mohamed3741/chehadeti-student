@@ -47,6 +47,12 @@
   "pinchToZoom": "اضغط للتكبير",
   "protectedContent": "محتوى محمي",
   "protected": "محمي",
+  "screenshotBlocked": "لقطة الشاشة محظورة",
+  "downloadBlocked": "التحميل محظور",
+  "printBlocked": "الطباعة محظورة",
+  "viewInApp": "عرض في التطبيق",
+  "documentNotAvailable": "المستند غير متاح",
+  "documentNotAvailableMessage": "لا يمكن عرض هذا المستند في الوقت الحالي.",
   "failedToLoadDocument": "فشل تحميل المستند. يرجى المحاولة مرة أخرى."
 }
 

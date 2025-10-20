@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
     View,
     StyleSheet,
@@ -43,20 +43,27 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
     const [webViewLoading, setWebViewLoading] = useState(true);
     const [focusKey, setFocusKey] = useState(0);
     const [pdfShellUrl, setPdfShellUrl] = useState<string | null>(null);
+    const [isScreenCaptureEnabled, setIsScreenCaptureEnabled] = useState(false);
 
     const webRef = React.useRef<WebView>(null);
     const appState = React.useRef(AppState.currentState);
 
-    // Enable/disable screenshot protection only while this screen is focused.
+    // Enhanced screenshot protection for PDF documents
     useFocusEffect(
         React.useCallback(() => {
             let cancelled = false;
-            const enable = async () => {
+            const enableProtection = async () => {
                 try {
-                    if (!cancelled) await ScreenCapture.preventScreenCaptureAsync();
-                } catch {}
+                    if (!cancelled) {
+                        await ScreenCapture.preventScreenCaptureAsync();
+                        setIsScreenCaptureEnabled(true);
+                        console.log('🔒 Screen capture protection enabled');
+                    }
+                } catch (error) {
+                    console.log('⚠️ Screen capture protection failed:', error);
+                }
             };
-            enable();
+            enableProtection();
 
             // On every focus, bump key to guarantee a fresh surface (prevents black view)
             setFocusKey((k) => k + 1);
@@ -64,6 +71,8 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
             return () => {
                 cancelled = true;
                 ScreenCapture.allowScreenCaptureAsync().catch(() => {});
+                setIsScreenCaptureEnabled(false);
+                console.log('🔓 Screen capture protection disabled');
             };
         }, [])
     );
@@ -84,30 +93,135 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
         return () => sub.remove();
     }, []);
 
-    // Build Google Docs Viewer URL for in-app PDF viewing (like WhatsApp)
+    // Create a custom HTML wrapper for PDF viewing that prevents external launches
+    const createPDFWrapper = (pdfUrl: string) => {
+        return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+            <style>
+                body, html {
+                    margin: 0;
+                    padding: 0;
+                    width: 100%;
+                    height: 100%;
+                    overflow: hidden;
+                    background: #f5f5f5;
+                }
+                .pdf-container {
+                    width: 100%;
+                    height: 100vh;
+                    border: none;
+                    position: relative;
+                }
+                .security-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    pointer-events: none;
+                    z-index: 9999;
+                    background: repeating-linear-gradient(
+                        45deg,
+                        transparent,
+                        transparent 100px,
+                        rgba(0,0,0,0.02) 100px,
+                        rgba(0,0,0,0.02) 200px
+                    );
+                }
+                .security-badge {
+                    position: fixed;
+                    bottom: 10px;
+                    left: 10px;
+                    background: rgba(0,0,0,0.7);
+                    color: white;
+                    padding: 5px 10px;
+                    border-radius: 5px;
+                    font-size: 12px;
+                    font-family: Arial, sans-serif;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="security-overlay"></div>
+            <div class="security-badge">🔒 Protected Content</div>
+            <iframe 
+                class="pdf-container" 
+                src="${pdfUrl}" 
+                frameborder="0"
+                allowfullscreen
+                sandbox="allow-same-origin allow-scripts allow-forms"
+                onload="console.log('PDF loaded successfully')"
+            ></iframe>
+            
+            <script>
+                // Prevent all external navigation
+                window.addEventListener('beforeunload', function(e) {
+                    e.preventDefault();
+                    e.returnValue = '';
+                    return '';
+                });
+                
+                // Block external links
+                document.addEventListener('click', function(e) {
+                    if (e.target.tagName === 'A' && e.target.href) {
+                        e.preventDefault();
+                        console.log('Blocked external link:', e.target.href);
+                    }
+                });
+                
+                // Block context menu
+                document.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
+                });
+                
+                // Block keyboard shortcuts
+                document.addEventListener('keydown', function(e) {
+                    if (e.ctrlKey || e.metaKey) {
+                        e.preventDefault();
+                    }
+                });
+                
+                console.log('PDF wrapper loaded with security measures');
+            </script>
+        </body>
+        </html>
+        `;
+    };
+
+    // Build PDF URL for in-app viewing with custom wrapper
     useEffect(() => {
-        if (content.media?.type === MediaEnum.DOCUMENT || content.media?.type === "DOCUMENT") {
+        if (content.media?.type === MediaEnum.DOCUMENT || content.media?.type === "DOCUMENT" || 
+            (content.media?.link && (content.media.link.includes('.pdf') || content.media.link.includes('pdf') || content.media.link.includes('document')))) {
+            
             const pdfLink = content.media?.link || "";
-            // Google Docs Viewer is the most reliable way to keep PDFs in-app
-            // It's trusted by iOS/Android WebView and won't trigger external browser
-            const googleDocsUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfLink)}`;
-            setPdfShellUrl(googleDocsUrl);
-            console.log('📄 Setting PDF URL for in-app viewing');
+            console.log('📄 Processing document URL:', pdfLink);
+            
+            // Use custom HTML wrapper approach for maximum security
+            let pdfUrl = "";
+            
+            // Determine the best PDF viewer based on URL characteristics
+            if (pdfLink.includes('.pdf') || pdfLink.includes('pdf')) {
+                // Use Mozilla PDF.js viewer with custom wrapper for .pdf files
+                pdfUrl = `https://mozilla.github.io/pdf.js/web/viewer.html?file=${encodeURIComponent(pdfLink)}#toolbar=0&navpanes=0&scrollbar=0&statusbar=0&messages=0&sidebar=0`;
+            } else {
+                // Use Google Docs Viewer with custom wrapper for other document types
+                pdfUrl = `https://docs.google.com/gview?embedded=true&url=${encodeURIComponent(pdfLink)}&chrome=false&widget=true&headers=false`;
+            }
+            
+            // Create custom HTML wrapper
+            const wrappedHTML = createPDFWrapper(pdfUrl);
+            const dataUrl = `data:text/html;charset=utf-8,${encodeURIComponent(wrappedHTML)}`;
+            
+            setPdfShellUrl(dataUrl);
+            console.log('📄 Setting PDF URL with custom wrapper for in-app viewing');
         } else {
             setPdfShellUrl(null);
         }
     }, [content]);
-
-    const openExternally = async () => {
-        if (content.media?.link) {
-            const supported = await Linking.canOpenURL(content.media.link);
-            if (supported) {
-                await Linking.openURL(content.media.link);
-            } else {
-                Alert.alert(t("error") || "Error", t("cannotOpenLink") || "Cannot open this link");
-            }
-        }
-    };
 
     const renderImage = () => (
         <View key={`img-${focusKey}`} style={styles.imageScrollContainer}>
@@ -162,36 +276,134 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
 
     const injectedPDFGuards = `
     (function(){
-      // Hide download/print-like controls if any appear inside the HTML shell
+      // Enhanced security guards for PDF viewing
       const hide = () => {
         const sel = [
           '[download]','a[download]','a[href*="download"]','a[title*="Download"]',
           'button[title*="Download"]','[aria-label*="Download"]','[aria-label*="download"]',
-          '[aria-label*="Print"]','[title*="Print"]'
+          '[aria-label*="Print"]','[title*="Print"]','button[onclick*="print"]',
+          '[onclick*="download"]','[onclick*="save"]','[onclick*="export"]',
+          '.download','.print','.save','.export','#download','#print','#save','#export',
+          '[class*="download"]','[class*="print"]','[class*="save"]','[class*="export"]',
+          '[id*="download"]','[id*="print"]','[id*="save"]','[id*="export"]'
         ];
         document.querySelectorAll(sel.join(',')).forEach(n=>{
           n.style.display='none'; n.style.visibility='hidden'; n.style.pointerEvents='none';
+          n.remove(); // Completely remove elements
         });
       };
+      
+      // Hide controls immediately and continuously
       hide();
       const mo = new MutationObserver(hide);
       mo.observe(document.documentElement, {subtree:true,childList:true,attributes:true});
-      addEventListener('copy', e => e.preventDefault(), true);
-      addEventListener('cut', e => e.preventDefault(), true);
-      addEventListener('contextmenu', e => e.preventDefault(), true);
-      document.body && (document.body.style.webkitUserSelect='none', document.body.style.userSelect='none');
+      
+      // Prevent copy, cut, paste, and context menu
+      ['copy', 'cut', 'paste', 'contextmenu', 'selectstart', 'dragstart'].forEach(event => {
+        addEventListener(event, e => e.preventDefault(), true);
+      });
+      
+      // Disable text selection
+      document.body && (
+        document.body.style.webkitUserSelect='none', 
+        document.body.style.userSelect='none',
+        document.body.style.webkitTouchCallout='none',
+        document.body.style.webkitTapHighlightColor='transparent'
+      );
+      
+      // Disable right-click context menu
+      document.addEventListener('contextmenu', e => e.preventDefault(), true);
+      
+      // Block keyboard shortcuts for copy, print, save
+      document.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'c' || e.key === 'p' || e.key === 's' || e.key === 'a')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+        // Block F12, Ctrl+Shift+I, Ctrl+U (developer tools)
+        if (e.key === 'F12' || 
+            ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I') ||
+            ((e.ctrlKey || e.metaKey) && e.key === 'u')) {
+          e.preventDefault();
+          e.stopPropagation();
+          return false;
+        }
+      }, true);
+      
+      // Block external app launches and redirects
+      const originalOpen = window.open;
+      window.open = function(url, target, features) {
+        console.log('🚫 Blocked window.open attempt:', url);
+        return null;
+      };
+      
+      // Block location changes that might trigger external apps
+      const originalAssign = window.location.assign;
+      window.location.assign = function(url) {
+        console.log('🚫 Blocked location.assign attempt:', url);
+        return false;
+      };
+      
+      // Block location replace
+      const originalReplace = window.location.replace;
+      window.location.replace = function(url) {
+        console.log('🚫 Blocked location.replace attempt:', url);
+        return false;
+      };
+      
+      // Disable image dragging
+      document.addEventListener('dragstart', e => e.preventDefault(), true);
+      
+      // Add watermark overlay
+      const watermark = document.createElement('div');
+      watermark.style.cssText = \`
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 9999;
+        background: repeating-linear-gradient(
+          45deg,
+          transparent,
+          transparent 100px,
+          rgba(0,0,0,0.03) 100px,
+          rgba(0,0,0,0.03) 200px
+        );
+        opacity: 0.1;
+      \`;
+      document.body.appendChild(watermark);
+      
       true;
     })();
-  `;
+    `;
 
-    const renderPDF = () => (
-        <View key={`pdf-${focusKey}`} style={styles.pdfContainer}>
-            {webViewLoading && (
-                <View style={styles.webViewLoader}>
-                    <ActivityIndicator size="large" color={Colors.primary} />
-                    <StyledText style={styles.loadingText}>{t("loadingDocument") || "Loading document..."}</StyledText>
+    const renderPDF = () => {
+        // If no PDF URL is available, show a message
+        if (!pdfShellUrl) {
+            return (
+                <View style={styles.pdfContainer}>
+                    <View style={styles.errorContainer}>
+                        <Ionicons name="document-outline" size={80} color={Colors.primary} />
+                        <StyledText style={styles.errorTitle}>{t("documentNotAvailable") || "Document Not Available"}</StyledText>
+                        <StyledText style={styles.errorDescription}>
+                            {t("documentNotAvailableMessage") || "This document cannot be displayed at the moment."}
+                        </StyledText>
+                    </View>
                 </View>
-            )}
+            );
+        }
+
+        return (
+            <View key={`pdf-${focusKey}`} style={styles.pdfContainer}>
+                {webViewLoading && (
+                    <View style={styles.webViewLoader}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                        <StyledText style={styles.loadingText}>{t("loadingDocument") || "Loading document..."}</StyledText>
+                    </View>
+                )}
 
             <WebView
                 ref={webRef}
@@ -202,14 +414,44 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
                 onLoadEnd={() => setWebViewLoading(false)}
                 onError={(e) => {
                     setWebViewLoading(false);
+                    console.log('❌ WebView error:', e.nativeEvent);
                     Alert.alert(t("error") || "Error", t("failedToLoadDocument") || "Failed to load document. Please try again.");
+                }}
+                onHttpError={(e) => {
+                    console.log('❌ WebView HTTP error:', e.nativeEvent);
                 }}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
                 // CRITICAL: Prevent opening new windows/tabs (keeps it in-app)
                 setSupportMultipleWindows={false}
+                // Enhanced security properties to prevent external app launches
+                allowsBackForwardNavigationGestures={false}
+                allowsLinkPreview={false}
+                allowsPictureInPictureMediaPlayback={false}
+                allowsProtectedMedia={false}
+                allowsAirPlayForMediaPlayback={false}
+                // Disable developer tools and debugging
                 allowsInlineMediaPlayback={false}
                 mediaPlaybackRequiresUserAction={true}
+                // Additional security measures
+                hideKeyboardAccessoryView={true}
+                keyboardDisplayRequiresUserAction={true}
+                // Disable file access
+                allowsFileAccess={false}
+                allowsFileAccessFromFileURLs={false}
+                allowsUniversalAccessFromFileURLs={false}
+                // Prevent external app launches
+                allowsArbitraryLoads={false}
+                allowsArbitraryLoadsInWebContent={false}
+                // Force in-app viewing
+                onNavigationStateChange={(navState) => {
+                    console.log('🧭 Navigation state change:', navState.url);
+                    // Prevent any navigation that might trigger external apps
+                    if (navState.url.includes('safari') || navState.url.includes('chrome')) {
+                        console.log('🚫 Blocked external browser navigation');
+                        return false;
+                    }
+                }}
                 // Allow all origins for Google Docs Viewer
                 originWhitelist={["*"]}
                 // Allow mixed content for better compatibility
@@ -223,44 +465,69 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
                 // Keep rendering stable (prevents black screen)
                 renderToHardwareTextureAndroid={false}
                 androidLayerType="software"
-                // Keep PDF viewing inside the app - block external navigation
+                // CRITICAL: Force PDF viewing to stay within the app
                 onShouldStartLoadWithRequest={(req) => {
                     const url = (req?.url || "").toLowerCase();
                     
                     console.log('🔗 WebView navigation request:', url);
                     
-                    // Block download/print attempts
+                    // BLOCK any attempt to open external browsers or apps
+                    if (
+                        url.includes('safari') ||
+                        url.includes('chrome') ||
+                        url.includes('firefox') ||
+                        url.includes('browser') ||
+                        url.includes('external') ||
+                        url.includes('redirect') ||
+                        url.includes('open') ||
+                        url.includes('launch')
+                    ) {
+                        console.log('🚫 Blocked external browser/app launch:', url);
+                        return false;
+                    }
+                    
+                    // Block download/print/save attempts more comprehensively
                     if (
                         url.includes('/download') ||
                         url.includes('?download') ||
                         url.includes('&download') ||
                         url.includes('print') ||
+                        url.includes('save') ||
+                        url.includes('export') ||
+                        url.includes('attachment') ||
                         url.startsWith('blob:') ||
-                        url.startsWith('data:application/')
+                        url.startsWith('data:application/') ||
+                        url.includes('file://') ||
+                        url.includes('ftp://') ||
+                        url.includes('javascript:') ||
+                        url.includes('vbscript:')
                     ) {
-                        console.log('🚫 Blocked download/print attempt');
+                        console.log('🚫 Blocked download/print/save attempt:', url);
                         return false;
                     }
                     
-                    // Allow Google Docs Viewer and its resources (CRITICAL for in-app viewing)
+                    // Allow Mozilla PDF.js and Google Docs Viewer resources (CRITICAL for in-app viewing)
                     if (
+                        url.includes('mozilla.github.io') ||
+                        url.includes('pdf.js') ||
                         url.includes('docs.google.com') ||
                         url.includes('drive.google.com') ||
                         url.includes('googleusercontent.com') ||
-                        url.includes('gstatic.com')
+                        url.includes('gstatic.com') ||
+                        url.includes('googleapis.com')
                     ) {
-                        console.log('✅ Allowed Google Docs Viewer resource');
+                        console.log('✅ Allowed PDF viewer resource');
                         return true;
                     }
                     
-                    // Allow HTTPS for loading the actual PDF
-                    if (url.startsWith('https://') || url.startsWith('http://')) {
+                    // Allow HTTPS for loading the actual PDF (but be more restrictive)
+                    if (url.startsWith('https://') && !url.includes('download') && !url.includes('print')) {
                         console.log('✅ Allowed HTTPS resource');
                         return true;
                     }
                     
                     // Block everything else
-                    console.log('🚫 Blocked unknown navigation');
+                    console.log('🚫 Blocked unknown navigation:', url);
                     return false;
                 }}
                 // iOS render-process death recovery
@@ -279,52 +546,101 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
 
             <View style={styles.securityWatermark} pointerEvents="none">
                 <Ionicons name="shield-checkmark" size={14} color="rgba(0,0,0,0.4)" />
-                <StyledText style={styles.watermarkText}>{t("protected") || "Protected"}</StyledText>
+                <StyledText style={styles.watermarkText}>
+                    {isScreenCaptureEnabled ? 
+                        `${t("protected") || "Protected"} • ${t("screenshotBlocked") || "Screenshot Blocked"}` : 
+                        `${t("protected") || "Protected"}`
+                    }
+                </StyledText>
             </View>
         </View>
-    );
+        );
+    };
 
-    const renderVideo = () => (
-        <View style={styles.videoContainer}>
-            <Ionicons name="play-circle-outline" size={80} color={Colors.primary} />
-            <StyledText style={styles.videoTitle}>{t("videoContent") || "Video Content"}</StyledText>
-            <StyledText style={styles.videoDescription}>{t("videoMessage") || "Video playback will be available soon"}</StyledText>
-            <TouchableOpacity style={styles.openButton} onPress={openExternally} activeOpacity={0.8}>
-                <Ionicons name="open-outline" size={20} color="#FFFFFF" />
-                <StyledText style={styles.openButtonText}>{t("openInBrowser") || "Open in Browser"}</StyledText>
-            </TouchableOpacity>
-        </View>
-    );
+    const renderVideo = () => {
+        // If it's actually a document, render as PDF instead
+        if (content.media?.link && (content.media.link.includes('.pdf') || content.media.link.includes('pdf'))) {
+            return renderPDF();
+        }
+        
+        // For actual video content, show video placeholder without external browser button
+        return (
+            <View style={styles.videoContainer}>
+                <Ionicons name="play-circle-outline" size={80} color={Colors.primary} />
+                <StyledText style={styles.videoTitle}>{t("videoContent") || "Video Content"}</StyledText>
+                <StyledText style={styles.videoDescription}>{t("videoMessage") || "Video playback will be available soon"}</StyledText>
+                <View style={styles.noActionContainer}>
+                    <Ionicons name="eye-outline" size={24} color={Colors.primary} />
+                    <StyledText style={styles.noActionText}>{t("viewInApp") || "View in App"}</StyledText>
+                </View>
+            </View>
+        );
+    };
 
-    const renderDefault = () => (
-        <View style={styles.defaultContainer}>
-            <Ionicons name="document-text-outline" size={80} color={Colors.primary} />
-            <StyledText style={styles.defaultTitle}>{content.title}</StyledText>
-            {content.description && <StyledText style={styles.defaultDescription}>{content.description}</StyledText>}
-            {content.media?.link && (
-                <TouchableOpacity style={styles.openButton} onPress={openExternally} activeOpacity={0.8}>
-                    <Ionicons name="open-outline" size={20} color="#FFFFFF" />
-                    <StyledText style={styles.openButtonText}>{t("openInBrowser") || "Open in Browser"}</StyledText>
-                </TouchableOpacity>
-            )}
-        </View>
-    );
+    const renderDefault = () => {
+        // Always try to render as PDF if there's a media link
+        if (content.media?.link) {
+            console.log('📄 Default render: attempting to render as PDF');
+            return renderPDF();
+        }
+        
+        // Only show placeholder if no media link
+        return (
+            <View style={styles.defaultContainer}>
+                <Ionicons name="document-text-outline" size={80} color={Colors.primary} />
+                <StyledText style={styles.defaultTitle}>{content.title}</StyledText>
+                {content.description && <StyledText style={styles.defaultDescription}>{content.description}</StyledText>}
+                <View style={styles.noActionContainer}>
+                    <Ionicons name="eye-outline" size={24} color={Colors.primary} />
+                    <StyledText style={styles.noActionText}>{t("viewInApp") || "View in App"}</StyledText>
+                </View>
+            </View>
+        );
+    };
 
     const renderContent = () => {
         if (!content.media?.link) return renderDefault();
+        
         const mediaType = content.media?.type;
-        switch (mediaType) {
-            case MediaEnum.IMAGE:
-            case "IMAGE":
-                return renderImage();
-            case MediaEnum.DOCUMENT:
-            case "DOCUMENT":
-                return renderPDF();
-            case MediaEnum.VIDEO:
-            case "VIDEO":
-                return renderVideo();
-            default:
-                return renderDefault();
+        const mediaLink = content.media?.link.toLowerCase();
+        
+        // Enhanced PDF detection - check both type and URL
+        const isPDF = mediaType === MediaEnum.DOCUMENT || 
+                     mediaType === "DOCUMENT" || 
+                     mediaLink.includes('.pdf') || 
+                     mediaLink.includes('pdf') ||
+                     mediaLink.includes('document');
+        
+        // Enhanced image detection
+        const isImage = mediaType === MediaEnum.IMAGE || 
+                       mediaType === "IMAGE" || 
+                       mediaLink.includes('.jpg') || 
+                       mediaLink.includes('.jpeg') || 
+                       mediaLink.includes('.png') || 
+                       mediaLink.includes('.gif') || 
+                       mediaLink.includes('.webp');
+        
+        // Enhanced video detection
+        const isVideo = mediaType === MediaEnum.VIDEO || 
+                      mediaType === "VIDEO" || 
+                      mediaLink.includes('.mp4') || 
+                      mediaLink.includes('.avi') || 
+                      mediaLink.includes('.mov') || 
+                      mediaLink.includes('.wmv');
+        
+        // Render based on detected content type
+        if (isPDF) {
+            console.log('📄 Detected PDF content, rendering PDF viewer');
+            return renderPDF();
+        } else if (isImage) {
+            console.log('🖼️ Detected image content, rendering image viewer');
+            return renderImage();
+        } else if (isVideo) {
+            console.log('🎥 Detected video content, rendering video placeholder');
+            return renderVideo();
+        } else {
+            console.log('📄 Unknown content type, trying PDF viewer as fallback');
+            return renderDefault();
         }
     };
 
@@ -605,6 +921,45 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         color: '#FFFFFF',
         fontFamily: FontsEnum.Poppins_600SemiBold,
+    },
+    noActionContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 8,
+        gap: 8,
+        marginTop: 20,
+    },
+    noActionText: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: Colors.primary,
+        fontFamily: FontsEnum.Poppins_500Medium,
+    },
+    errorContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingHorizontal: 40,
+        backgroundColor: '#FFFFFF',
+    },
+    errorTitle: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: Colors.primary,
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+        marginTop: 20,
+        marginBottom: 10,
+        textAlign: 'center',
+    },
+    errorDescription: {
+        fontSize: 14,
+        color: '#666666',
+        fontFamily: FontsEnum.Poppins_400Regular,
+        textAlign: 'center',
+        lineHeight: 20,
     },
 });
 

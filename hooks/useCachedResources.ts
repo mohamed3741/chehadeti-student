@@ -40,10 +40,10 @@ export default function useCachedResources() {
 
             } catch (e) {
                 // We might want to provide this error information to an error reporting service
-                console.warn(e);
+                console.warn('Error in useCachedResources:', e);
             } finally {
                 setLoadingComplete(true);
-                await SplashScreen.hideAsync().catch(reason => console.log(reason));
+                await SplashScreen.hideAsync().catch(reason => console.log('Error hiding splash screen:', reason));
             }
         })()
     }, []);
