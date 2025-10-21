@@ -96,7 +96,6 @@ export const useAuth = () => {
             const body = token ? {
                     userId: stateAuth?.connectedUser?.id,
                     username: stateAuth?.connectedUser?.username,
-                    lang,
                     version: Application.nativeApplicationVersion,
                     ...token
                 } :

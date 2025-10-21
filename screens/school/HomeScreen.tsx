@@ -311,7 +311,7 @@ const HomeScreen = () => {
                                 onPress={() => navigation.navigate('Profile')}
                                 activeOpacity={0.7}
                             >
-                                <Ionicons name="person-circle-outline" size={32} color={Colors.primary} />
+                                <Ionicons name="person-circle-outline" size={32} color={'#FFF'} />
                             </TouchableOpacity>
                         </View>
                     </View>

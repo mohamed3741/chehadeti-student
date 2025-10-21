@@ -36,7 +36,8 @@
       }
     },
     "staging": {
-      "distribution": "store",
+      "distribution": "internal",
+      "developmentClient": true,
       "channel": "staging",
       "env": {
         "ENVIRONMENT": "staging",
@@ -59,7 +60,7 @@
       "env": {
         "ENVIRONMENT": "production",
         "CHEHADETI": "https://api-production.chehadeti.com",
-        "FIREBASE_APP_ID":"1:751690193993:ios:8f1bc0799a863fc973f398"
+        "FIREBASE_APP_ID": "1:751690193993:ios:8f1bc0799a863fc973f398"
       },
       "android": {
         "autoIncrement": "versionCode",
