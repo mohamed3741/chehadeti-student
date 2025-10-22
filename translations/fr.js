@@ -724,5 +724,6 @@ export const fr = {
     "differentFromCurrent": "Différent du mot de passe actuel",
     "passwordsMatch": "Les mots de passe correspondent",
     "savePassword": "Sauvegarder le mot de passe",
-    "failedToLoadDocument": "Échec du chargement du document. Veuillez réessayer."
+    "failedToLoadDocument": "Échec du chargement du document. Veuillez réessayer.",
+    "errorLoadingImage": "Échec du chargement de l'image"
 }
