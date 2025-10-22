@@ -790,5 +790,6 @@ export const en = {
     "passwordsMatch": "Passwords match",
     "saving": "Saving...",
     "savePassword": "Save Password",
-    "failedToLoadDocument": "Failed to load document. Please try again."
+    "failedToLoadDocument": "Failed to load document. Please try again.",
+    "errorLoadingImage": "Failed to load image"
 };

@@ -952,6 +952,9 @@ export const ar = {
     "differentFromCurrent": "مختلفة عن كلمة المرور الحالية",
     "passwordsMatch": "كلمات المرور متطابقة",
     "savePassword": "حفظ كلمة المرور",
-    "failedToLoadDocument": "فشل تحميل المستند. يرجى المحاولة مرة أخرى."
+    "failedToLoadDocument": "فشل تحميل المستند. يرجى المحاولة مرة أخرى.",
+    "searchPlaceholder": "البحث في الدورات والفصول والمحتوى...",
+    "myCourses": "دوراتي",
+    "errorLoadingImage": "فشل تحميل الصورة"
 
 };

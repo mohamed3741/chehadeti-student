@@ -161,6 +161,11 @@ export default function LoginScreen({navigation, route}) {
                                     resizeMode="cover"
                                 />
                             </View>
+                            
+                            {/* App Name */}
+                            <StyledText style={styles.appName}>
+                                شهادتي
+                            </StyledText>
                         </View>
 
                         <View style={styles.formCard}>
@@ -264,9 +269,7 @@ export default function LoginScreen({navigation, route}) {
                             <TouchableOpacity  style={{
                                 alignItems: "flex-end",marginBottom : 15
                             }} onPress={() => goTo("ForgotPassword")}>
-                                <StyledText style={styles.forgotPasswordText}>
-                                    {t("forgotPassword")}
-                                </StyledText>
+
                             </TouchableOpacity>
 
                             <TouchableOpacity
@@ -405,6 +408,20 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.3,
         shadowRadius: 8,
         elevation: 8,
+    },
+    appName: {
+        fontSize: 32,
+        fontWeight: "bold",
+        color: "#FFFFFF",
+        textAlign: "center",
+        fontFamily: FontsEnum.Poppins_700Bold,
+        marginBottom: 10,
+        textShadowColor: "rgba(0, 0, 0, 0.3)",
+        textShadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        textShadowRadius: 4,
     },
     welcomeTitle: {
         fontSize: 28,
@@ -586,12 +603,12 @@ const styles = StyleSheet.create({
 
     digiWaveText: {
         fontSize: 14,
-        color: "#000",
+        color: "rgba(255, 255, 255, 0.8)",
         fontFamily: FontsEnum.Poppins_400Regular,
     },
 
     digiWaveHighlight: {
-        color: "#FFF",
+        color: "#FFFFFF",
         fontFamily: FontsEnum.Poppins_500Medium,
         textDecorationLine: "underline",
     },
