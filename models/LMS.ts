@@ -7,6 +7,19 @@ export enum MediaEnum {
     AUDIO = 'AUDIO',
 }
 
+export enum ContentType {
+    PDF = 'PDF',
+    IMAGE = 'IMAGE',
+    VIDEO = 'VIDEO',
+    AUDIO = 'AUDIO',
+    DOCUMENT = 'DOCUMENT',
+    TEXT = 'TEXT',
+    LINK = 'LINK',
+    QUIZ = 'QUIZ',
+    ASSIGNMENT = 'ASSIGNMENT',
+    UNKNOWN = 'UNKNOWN',
+}
+
 export interface MediaDTO {
     id: number;
     type: MediaEnum;

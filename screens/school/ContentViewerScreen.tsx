@@ -12,6 +12,7 @@ import {
     Alert,
     Platform,
     AppState,
+    ScrollView,
 } from "react-native";
 import { useNavigation, type RouteProp, useFocusEffect } from "@react-navigation/native";
 import type { StackNavigationProp } from "@react-navigation/stack";
@@ -26,7 +27,7 @@ import * as ScreenCapture from "expo-screen-capture";
 import PdfViewer from "../../components/PdfViewer";
 // NOTE: imports and styles intentionally omitted as requested.
 
-const { width } = Dimensions.get("window");
+const {width, height} = Dimensions.get('window');
 
 type ContentViewerScreenNavigationProp = StackNavigationProp<TabHomeParamList, "ContentViewer">;
 type ContentViewerScreenRouteProp = RouteProp<TabHomeParamList, "ContentViewer">;
@@ -204,22 +205,37 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
                     <StyledText style={styles.loadingText}>{t("loadingDocument") || "Loading..."}</StyledText>
                 </View>
             )}
-            <Image
-                key={`img-el-${focusKey}`}
-                source={{ uri: content.media?.link }}
-                style={styles.fullImage}
-                resizeMode="contain"
-                onLoadStart={() => setImageLoading(true)}
-                onLoadEnd={() => setImageLoading(false)}
-                onError={() => {
-                    setImageLoading(false);
-                    Alert.alert(t("error") || "Error", t("errorLoadingImage") || "Failed to load image");
-                }}
-            />
+            
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                showsHorizontalScrollIndicator={false}
+                minimumZoomScale={1}
+                maximumZoomScale={3}
+                bouncesZoom={true}
+                scrollEnabled={true}
+                pinchGestureEnabled={true}
+            >
+                <Image
+                    source={{ uri: content.media?.link }}
+                    style={styles.fullImage}
+                    resizeMode="contain"
+                    onLoadStart={() => setImageLoading(true)}
+                    onLoadEnd={() => setImageLoading(false)}
+                    onError={() => {
+                        setImageLoading(false);
+                        Alert.alert(t("error") || "Error", t("errorLoadingImage") || "Failed to load image");
+                    }}
+                />
+            </ScrollView>
+            
             <View style={styles.securityBadge}>
                 <Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
                 <StyledText style={styles.securityBadgeText}>
-                    {t("protectedContent") || "Protected Content"}
+                    {isScreenCaptureEnabled
+                        ? `${t("protected") || "Protected"} • ${t("screenshotBlocked") || "Screenshot Blocked"}`
+                        : `${t("protected") || "Protected"}`}
                 </StyledText>
             </View>
         </View>
@@ -319,10 +335,19 @@ const styles = StyleSheet.create({
         position: "relative",
     },
 
+    // ScrollView for zoom functionality
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     // Image fills remaining screen; contain keeps aspect
     fullImage: {
-        width: "100%",
-        height: "100%",
+        width: width,
+        height: height - 150, // Account for header
     },
 
     // Native PDF view should stretch; width set to screen width for safety

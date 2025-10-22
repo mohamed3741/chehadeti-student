@@ -7,6 +7,7 @@ import {
     ActivityIndicator,
     RefreshControl,
     StatusBar,
+    Dimensions,
 } from 'react-native';
 import {useNavigation, RouteProp} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
@@ -17,9 +18,11 @@ import {Ionicons} from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
 import {LinearGradient} from "expo-linear-gradient";
 import {LMSApi} from "../../api/LMSApi";
-import {SubsectionDTO, ContentDTO, MediaEnum} from "../../models/LMS";
+import {SubsectionDTO, ContentDTO, ContentType} from "../../models/LMS";
 import {Toast} from "../../components/Toast";
 import {TabHomeParamList} from "../../types";
+
+const {width} = Dimensions.get('window');
 
 type SubsectionContentsScreenNavigationProp = StackNavigationProp<TabHomeParamList, 'SubsectionContents'>;
 type SubsectionContentsScreenRouteProp = RouteProp<TabHomeParamList, 'SubsectionContents'>;
@@ -66,39 +69,117 @@ const SubsectionContentsScreen = ({route}: SubsectionContentsScreenProps) => {
         fetchContents();
     };
 
-    const getContentIcon = (type?: MediaEnum) => {
+    const getContentTypeFromString = (contentType?: string): ContentType => {
+        if (!contentType) return ContentType.UNKNOWN;
+        
+        const upperType = contentType.toUpperCase();
+        switch (upperType) {
+            case 'PDF':
+                return ContentType.PDF;
+            case 'IMAGE':
+                return ContentType.IMAGE;
+            case 'VIDEO':
+                return ContentType.VIDEO;
+            case 'AUDIO':
+                return ContentType.AUDIO;
+            case 'DOCUMENT':
+                return ContentType.DOCUMENT;
+            case 'TEXT':
+                return ContentType.TEXT;
+            case 'LINK':
+                return ContentType.LINK;
+            case 'QUIZ':
+                return ContentType.QUIZ;
+            case 'ASSIGNMENT':
+                return ContentType.ASSIGNMENT;
+            default:
+                return ContentType.UNKNOWN;
+        }
+    };
+
+    const getContentIcon = (contentType?: string) => {
+        const type = getContentTypeFromString(contentType);
         switch (type) {
-            case MediaEnum.IMAGE:
-                return 'image-outline';
-            case MediaEnum.VIDEO:
-                return 'play-circle-outline';
-            case MediaEnum.DOCUMENT:
+            case ContentType.PDF:
                 return 'document-text-outline';
-            case MediaEnum.AUDIO:
+            case ContentType.IMAGE:
+                return 'image-outline';
+            case ContentType.VIDEO:
+                return 'play-circle-outline';
+            case ContentType.AUDIO:
                 return 'musical-notes-outline';
+            case ContentType.DOCUMENT:
+                return 'document-outline';
+            case ContentType.TEXT:
+                return 'text-outline';
+            case ContentType.LINK:
+                return 'link-outline';
+            case ContentType.QUIZ:
+                return 'help-circle-outline';
+            case ContentType.ASSIGNMENT:
+                return 'clipboard-outline';
             default:
                 return 'document-outline';
         }
     };
 
-    const getContentColor = (type?: MediaEnum) => {
+    const getContentColor = (contentType?: string) => {
+        const type = getContentTypeFromString(contentType);
         switch (type) {
-            case MediaEnum.IMAGE:
-                return '#10B981';
-            case MediaEnum.VIDEO:
-                return '#EF4444';
-            case MediaEnum.DOCUMENT:
-                return '#3B82F6';
-            case MediaEnum.AUDIO:
-                return '#F59E0B';
+            case ContentType.PDF:
+                return '#DC2626'; // Red for PDF
+            case ContentType.IMAGE:
+                return '#10B981'; // Green for images
+            case ContentType.VIDEO:
+                return '#EF4444'; // Red for videos
+            case ContentType.AUDIO:
+                return '#F59E0B'; // Orange for audio
+            case ContentType.DOCUMENT:
+                return '#3B82F6'; // Blue for documents
+            case ContentType.TEXT:
+                return '#8B5CF6'; // Purple for text
+            case ContentType.LINK:
+                return '#06B6D4'; // Cyan for links
+            case ContentType.QUIZ:
+                return '#EC4899'; // Pink for quizzes
+            case ContentType.ASSIGNMENT:
+                return '#F97316'; // Orange for assignments
             default:
                 return Colors.primary;
         }
     };
 
+    const getContentTypeLabel = (contentType?: string) => {
+        const type = getContentTypeFromString(contentType);
+        switch (type) {
+            case ContentType.PDF:
+                return 'PDF Document';
+            case ContentType.IMAGE:
+                return 'Image';
+            case ContentType.VIDEO:
+                return 'Video';
+            case ContentType.AUDIO:
+                return 'Audio';
+            case ContentType.DOCUMENT:
+                return 'Document';
+            case ContentType.TEXT:
+                return 'Text Content';
+            case ContentType.LINK:
+                return 'External Link';
+            case ContentType.QUIZ:
+                return 'Quiz';
+            case ContentType.ASSIGNMENT:
+                return 'Assignment';
+            default:
+                return contentType || 'Content';
+        }
+    };
+
     const renderContentCard = ({item}: {item: ContentDTO}) => {
-        const iconName = getContentIcon(item.media?.type);
-        const iconColor = getContentColor(item.media?.type);
+        const iconName = getContentIcon(item.contentType);
+        const iconColor = getContentColor(item.contentType);
+        const contentTypeLabel = getContentTypeLabel(item.contentType);
+        const contentType = getContentTypeFromString(item.contentType);
 
         return (
             <TouchableOpacity
@@ -121,17 +202,17 @@ const SubsectionContentsScreen = ({route}: SubsectionContentsScreenProps) => {
                             {item.description}
                         </StyledText>
                     )}
-                    {item.media && (
-                        <View style={styles.contentMeta}>
-                            <View style={[styles.badge, {backgroundColor: iconColor + '15'}]}>
-                                <StyledText style={[styles.badgeText, {color: iconColor}]}>
-                                    {item.media.type}
-                                </StyledText>
-                            </View>
+                    <View style={styles.contentMeta}>
+                        <View style={[styles.badge, {backgroundColor: iconColor + '15'}]}>
+                            <StyledText style={[styles.badgeText, {color: iconColor}]}>
+                                {contentTypeLabel}
+                            </StyledText>
                         </View>
-                    )}
+                    </View>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
+                <View style={styles.contentActions}>
+                    <Ionicons name="chevron-forward" size={20} color="#CCCCCC" />
+                </View>
             </TouchableOpacity>
         );
     };
@@ -170,6 +251,14 @@ const SubsectionContentsScreen = ({route}: SubsectionContentsScreenProps) => {
                             {subsection.description}
                         </StyledText>
                     )}
+                    <View style={styles.headerStats}>
+                        <View style={styles.statItem}>
+                            <Ionicons name="document-outline" size={14} color="rgba(255, 255, 255, 0.8)" />
+                            <StyledText style={styles.statText}>
+                                {contents.length} {contents.length === 1 ? 'item' : 'items'}
+                            </StyledText>
+                        </View>
+                    </View>
                 </View>
             </View>
 
@@ -205,7 +294,7 @@ const SubsectionContentsScreen = ({route}: SubsectionContentsScreenProps) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#F5F7FA',
+        backgroundColor: '#F8FAFC',
     },
     header: {
         backgroundColor: Colors.primary,
@@ -247,6 +336,25 @@ const styles = StyleSheet.create({
         color: 'rgba(255, 255, 255, 0.9)',
         fontFamily: FontsEnum.Poppins_400Regular,
         lineHeight: 20,
+        marginBottom: 12,
+    },
+    headerStats: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    statItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    statText: {
+        fontSize: 12,
+        color: 'rgba(255, 255, 255, 0.9)',
+        fontFamily: FontsEnum.Poppins_500Medium,
+        marginLeft: 4,
     },
     contentsList: {
         padding: 20,
@@ -256,66 +364,77 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         backgroundColor: '#FFFFFF',
-        borderRadius: 12,
+        borderRadius: 16,
         padding: 16,
-        marginBottom: 12,
+        marginBottom: 16,
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
             height: 2,
         },
         shadowOpacity: 0.08,
-        shadowRadius: 4,
-        elevation: 3,
-        gap: 12,
+        shadowRadius: 8,
+        elevation: 4,
+        borderWidth: 1,
+        borderColor: '#F1F5F9',
     },
     contentIconContainer: {
-        width: 56,
-        height: 56,
-        borderRadius: 12,
+        width: 60,
+        height: 60,
+        borderRadius: 16,
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 16,
     },
     contentInfo: {
         flex: 1,
+        justifyContent: 'center',
     },
     contentTitle: {
-        fontSize: 15,
+        fontSize: 16,
         fontWeight: '600',
-        color: '#333333',
+        color: '#1E293B',
         fontFamily: FontsEnum.Poppins_600SemiBold,
         marginBottom: 4,
+        lineHeight: 22,
     },
     contentDescription: {
-        fontSize: 12,
-        color: '#666666',
+        fontSize: 13,
+        color: '#64748B',
         fontFamily: FontsEnum.Poppins_400Regular,
-        lineHeight: 16,
-        marginBottom: 6,
+        lineHeight: 18,
+        marginBottom: 8,
     },
     contentMeta: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     badge: {
-        paddingHorizontal: 8,
+        paddingHorizontal: 10,
         paddingVertical: 4,
-        borderRadius: 6,
+        borderRadius: 8,
+        marginRight: 8,
     },
     badgeText: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: '600',
         fontFamily: FontsEnum.Poppins_600SemiBold,
+    },
+    contentActions: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingLeft: 8,
     },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        paddingHorizontal: 40,
     },
     loadingText: {
         marginTop: 16,
         fontSize: 16,
-        color: '#666666',
+        color: '#64748B',
         fontFamily: FontsEnum.Poppins_400Regular,
     },
     emptyContainer: {
@@ -328,14 +447,14 @@ const styles = StyleSheet.create({
     emptyTitle: {
         fontSize: 20,
         fontWeight: '600',
-        color: '#333333',
+        color: '#1E293B',
         fontFamily: FontsEnum.Poppins_600SemiBold,
         marginTop: 24,
         marginBottom: 8,
     },
     emptyMessage: {
         fontSize: 14,
-        color: '#666666',
+        color: '#64748B',
         fontFamily: FontsEnum.Poppins_400Regular,
         textAlign: 'center',
         lineHeight: 20,

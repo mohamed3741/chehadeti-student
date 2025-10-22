@@ -2,7 +2,7 @@ import {clearData, getData, storeData} from "../utils/AsyncStorage";
 import {DataKey} from "../models/Static";
 import {clearSecureData, getSecureData, storeSecureData} from "../utils/SecureStorage";
 import {UserApi} from "../api/UserApi";
-import {decodeJwt} from "../utils/JwtHelper";
+import {decodeJwt, isRefreshTokenExpired} from "../utils/JwtHelper";
 import * as Application from "expo-application";
 import {useNotificationReceived} from "./useNotificationReceived";
 import {useDispatch, useSelector} from "react-redux";
@@ -16,6 +16,7 @@ import {
 import {useEffect} from "react";
 import apiClient from "../api/ApiClient";
 import {logOutUser} from "../utils/logOutUtils";
+import {RefreshTokenDto} from "../models/UserModel";
 
 export const useAuth = () => {
     const stateAuth = useSelector((state: RootState) => state.auth)
@@ -61,16 +62,65 @@ export const useAuth = () => {
         return isSkipped === 'true';
     }
 
+    const refreshAccessToken = async (): Promise<boolean> => {
+        try {
+            const refreshToken = await getSecureData(DataKey.refreshToken);
+            if (!refreshToken) {
+                return false;
+            }
+
+            // Check if refresh token is expired
+            const isRefreshExpired = await isRefreshTokenExpired();
+            if (isRefreshExpired) {
+                console.log('Refresh token is expired');
+                return false;
+            }
+
+            const refreshTokenDto: RefreshTokenDto = { refreshToken };
+            const result = await UserApi.refreshToken(refreshTokenDto);
+            
+            if (result.ok && result.data) {
+                const loginData = result.data;
+                await storeToken(
+                    loginData.access_token,
+                    loginData.refresh_token,
+                    loginData.expires_in,
+                    loginData.refresh_expires_in
+                );
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Error refreshing token:', error);
+            return false;
+        }
+    };
+
     const refreshUser = async () => {
         const decoded = await decodeJwt();
         const isSkipped = await checkSkipped();
-        if (!decoded && !isSkipped) return await logOut();
+        
+        // If token is expired or not found, try to refresh it
+        if (!decoded && !isSkipped) {
+            const refreshSuccess = await refreshAccessToken();
+            if (!refreshSuccess) {
+                return await logOut();
+            }
+            // After successful refresh, decode again
+            const newDecoded = await decodeJwt();
+            if (!newDecoded) {
+                return await logOut();
+            }
+            decoded = newDecoded;
+        }
+        
         dispatch(updateTokens({
             token: decoded?.token,
             refreshToken: decoded?.refreshToken,
             accessTokenExpiry: parseInt(decoded?.accessTokenExpiry),
             refreshTokenExpiry: parseInt(decoded?.refreshTokenExpiry)
         }));
+        
         if (decoded) {
             const result = await UserApi.getMe();
             if (result.ok) {
@@ -81,7 +131,6 @@ export const useAuth = () => {
         } else {
             dispatch(updateConnectedUser(null))
         }
-
     }
 
 
@@ -145,6 +194,7 @@ export const useAuth = () => {
         refreshToken: stateAuth.refreshToken,
         accessTokenExpiry: stateAuth.accessTokenExpiry,
         refreshUser,
+        refreshAccessToken,
         storeToken,
         signupInProgress,
         skip,
