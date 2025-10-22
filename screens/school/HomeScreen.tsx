@@ -34,7 +34,7 @@ const HomeScreen = () => {
     const {connectedUser, logOut} = useAuth();
     const {t} = useTranslation();
     const [isModalVisible, setIsModalVisible] = useState(false);
-    console.log('connectedUser', connectedUser);
+
     const [showVerificationModal, setShowVerificationModal] = useState(false);
     const [courses, setCourses] = useState<CourseDTO[]>([]);
     const [loading, setLoading] = useState(true);
@@ -56,14 +56,14 @@ const HomeScreen = () => {
 
     const fetchCourses = async () => {
         if (!connectedUser?.classe?.id) {
-            console.log('No class ID found for user');
+
             return;
         }
 
         try {
             setLoading(true);
-            console.log('Fetching courses for class ID:', connectedUser.classe.id);
-            console.log('Connected user:', JSON.stringify(connectedUser, null, 2));
+
+
             const result = await LMSApi.getCoursesByClasse(connectedUser.classe.id);
 
 
@@ -72,14 +72,14 @@ const HomeScreen = () => {
                     const sortedCourses = result.data.sort((a, b) =>
                         (a.sortId || 0) - (b.sortId || 0)
                     );
-                    console.log('Setting courses:', sortedCourses.length, 'courses');
+
                     setCourses(sortedCourses);
                 } else if (result?.data) {
                     // Handle case where data might not be an array
-                    console.log('Data is not an array:', result.data);
+
                     setCourses([result.data]);
                 } else {
-                    console.log('No data in response, setting empty array');
+
                     setCourses([]);
                 }
             } else {
@@ -116,7 +116,7 @@ const HomeScreen = () => {
     // Navigation handlers for search results
     const handleSearchResultPress = async (result: SearchResultDTO) => {
         try {
-            console.log('🎯 Handling search result:', result.title, 'Type:', result.type);
+
             
             // Track the visit
             await LMSApi.trackContentVisit(result.id);
@@ -159,13 +159,13 @@ const HomeScreen = () => {
     // Navigation handler for last visited content
     const handleLastVisitedPress = async (content: LastVisitedContentDTO) => {
         try {
-            console.log('🎯 Fetching full content for:', content.contentTitle);
+
             
             // Fetch the full content with media links
             const contentResult = await LMSApi.getContentById(content.contentId);
             
             if (contentResult.ok && contentResult.data) {
-                console.log('✅ Full content fetched:', contentResult.data);
+
                 
                 // Track the visit
                 await LMSApi.trackContentVisit(content.contentId);
@@ -375,7 +375,7 @@ const HomeScreen = () => {
                         }
                     >
                         {(() => {
-                            console.log('🏠 HomeScreen: Rendering LastVisitedComponent');
+
                             return null;
                         })()}
                         <LastVisitedComponent 
