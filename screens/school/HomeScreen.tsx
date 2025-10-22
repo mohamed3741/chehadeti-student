@@ -21,9 +21,11 @@ import {Ionicons} from "@expo/vector-icons";
 import Colors from "../../constants/Colors";
 import {LinearGradient} from "expo-linear-gradient";
 import {LMSApi} from "../../api/LMSApi";
-import {CourseDTO} from "../../models/LMS";
+import {CourseDTO, SearchResultDTO, LastVisitedContentDTO} from "../../models/LMS";
 import {Toast} from "../../components/Toast";
 import {TabHomeParamList} from "../../types";
+import {SearchComponent} from "../../components/SearchComponent";
+import {LastVisitedComponent} from "../../components/LastVisitedComponent";
 
 type HomeScreenNavigationProp = StackNavigationProp<TabHomeParamList, 'TabHomeScreen'>;
 
@@ -32,13 +34,12 @@ const HomeScreen = () => {
     const {connectedUser, logOut} = useAuth();
     const {t} = useTranslation();
     const [isModalVisible, setIsModalVisible] = useState(false);
-    console.log('connectedUser', connectedUser);
+
     const [showVerificationModal, setShowVerificationModal] = useState(false);
     const [courses, setCourses] = useState<CourseDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    // Check if user is verified
     useEffect(() => {
         if (connectedUser && (connectedUser.isTelVerified === false || connectedUser.isTelVerified === null)) {
             setShowVerificationModal(true);
@@ -47,7 +48,6 @@ const HomeScreen = () => {
         }
     }, [connectedUser]);
 
-    // Fetch courses
     useEffect(() => {
         if (connectedUser?.isTelVerified && connectedUser?.classe?.id) {
             fetchCourses();
@@ -56,14 +56,14 @@ const HomeScreen = () => {
 
     const fetchCourses = async () => {
         if (!connectedUser?.classe?.id) {
-            console.log('No class ID found for user');
+
             return;
         }
 
         try {
             setLoading(true);
-            console.log('Fetching courses for class ID:', connectedUser.classe.id);
-            console.log('Connected user:', JSON.stringify(connectedUser, null, 2));
+
+
             const result = await LMSApi.getCoursesByClasse(connectedUser.classe.id);
 
 
@@ -72,14 +72,14 @@ const HomeScreen = () => {
                     const sortedCourses = result.data.sort((a, b) =>
                         (a.sortId || 0) - (b.sortId || 0)
                     );
-                    console.log('Setting courses:', sortedCourses.length, 'courses');
+
                     setCourses(sortedCourses);
                 } else if (result?.data) {
                     // Handle case where data might not be an array
-                    console.log('Data is not an array:', result.data);
+
                     setCourses([result.data]);
                 } else {
-                    console.log('No data in response, setting empty array');
+
                     setCourses([]);
                 }
             } else {
@@ -113,6 +113,75 @@ const HomeScreen = () => {
         setIsModalVisible(true);
     };
 
+    // Navigation handlers for search results
+    const handleSearchResultPress = async (result: SearchResultDTO) => {
+        try {
+
+            
+            // Track the visit
+            await LMSApi.trackContentVisit(result.id);
+            
+            // Navigate based on result type
+            switch (result.type) {
+                case 'COURSE':
+                    const course: CourseDTO = {
+                        id: result.id,
+                        title: result.title,
+                        description: result.description,
+                    };
+                    navigation.navigate('CourseDetail', { course });
+                    break;
+                case 'CHAPTER':
+                    const chapter = {
+                        id: result.id,
+                        title: result.title,
+                        description: result.description,
+                        courseId: result.courseId,
+                    };
+                    navigation.navigate('ChapterDetail', { chapter });
+                    break;
+                case 'SUBSECTION':
+                    const subsection = {
+                        id: result.id,
+                        title: result.title,
+                        description: result.description,
+                        chapterId: result.chapterId,
+                    };
+                    navigation.navigate('SubsectionContents', { subsection });
+                    break;
+            }
+        } catch (error) {
+            console.error('Error handling search result:', error);
+            Toast('Error opening content');
+        }
+    };
+
+    // Navigation handler for last visited content
+    const handleLastVisitedPress = async (content: LastVisitedContentDTO) => {
+        try {
+
+            
+            // Fetch the full content with media links
+            const contentResult = await LMSApi.getContentById(content.contentId);
+            
+            if (contentResult.ok && contentResult.data) {
+
+                
+                // Track the visit
+                await LMSApi.trackContentVisit(content.contentId);
+                
+                // Navigate to content viewer with full content data
+                navigation.navigate('ContentViewer', { content: contentResult.data });
+            } else {
+                console.error('❌ Failed to fetch content:', contentResult);
+                Toast('Error loading content');
+            }
+        } catch (error) {
+            console.error('Error handling last visited content:', error);
+            Toast('Error opening content');
+        }
+    };
+
 
     const renderFooter = () => (
         <TouchableOpacity
@@ -131,35 +200,6 @@ const HomeScreen = () => {
         await logOut();
     };
 
-    const renderCourseCard = ({item}: {item: CourseDTO}) => (
-        <TouchableOpacity
-            style={styles.courseCard}
-            onPress={() => navigation.navigate('CourseDetail', {course: item})}
-            activeOpacity={0.7}
-        >
-            <LinearGradient
-                colors={['#6A35C1', '#8B5FCF']}
-                style={styles.courseGradient}
-                start={{x: 0, y: 0}}
-                end={{x: 1, y: 1}}
-            >
-                <View style={styles.courseIcon}>
-                    <Ionicons name="book" size={32} color="#FFFFFF" />
-                </View>
-                <View style={styles.courseInfo}>
-                    <StyledText style={styles.courseTitle} numberOfLines={2}>
-                        {item.title}
-                    </StyledText>
-                    {item.description && (
-                        <StyledText style={styles.courseDescription} numberOfLines={2}>
-                            {item.description}
-                        </StyledText>
-                    )}
-                </View>
-                <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.8)" />
-            </LinearGradient>
-        </TouchableOpacity>
-    );
 
     const renderEmptyState = () => (
         <View style={styles.emptyContainer}>
@@ -316,33 +356,90 @@ const HomeScreen = () => {
                         </View>
                     </View>
 
-                    {/* Courses List */}
-                    {loading ? (
-                        <View style={styles.loadingContainer}>
-                            <ActivityIndicator size="large" color={Colors.primary} />
-                            <StyledText style={styles.loadingText}>
-                                {t('loadingCourses') || 'Loading courses...'}
-                            </StyledText>
-                        </View>
-                    ) : (
-                        <FlatList
-                            data={courses}
-                            renderItem={renderCourseCard}
-                            keyExtractor={(item) => item.id.toString()}
-                            contentContainerStyle={styles.coursesList}
-                            ListEmptyComponent={renderEmptyState}
-                            refreshControl={
-                                <RefreshControl
-                                    refreshing={refreshing}
-                                    onRefresh={onRefresh}
-                                    colors={[Colors.primary]}
-                                />
-                            }
-                            showsVerticalScrollIndicator={false}
-                        />
-                    )}
+                    {/* Search Component */}
+                    <SearchComponent 
+                        onResultPress={handleSearchResultPress}
+                        placeholder={t('searchPlaceholder') || 'Search courses, chapters, and content...'}
+                    />
 
-                    {renderFooter()}
+                    <ScrollView
+                        style={styles.scrollContainer}
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{paddingBottom : 50}}
+                        refreshControl={
+                            <RefreshControl
+                                refreshing={refreshing}
+                                onRefresh={onRefresh}
+                                colors={[Colors.primary]}
+                            />
+                        }
+                    >
+                        {(() => {
+
+                            return null;
+                        })()}
+                        <LastVisitedComponent 
+                            onContentPress={handleLastVisitedPress}
+                            limit={5}
+                        />
+
+                        <View style={styles.coursesSection}>
+                            <View style={styles.sectionHeader}>
+                                <StyledText style={styles.sectionTitle}>
+                                    {t('myCourses') || 'My Courses'}
+                                </StyledText>
+                                <StyledText style={styles.courseCount}>
+                                    {courses.length} {courses.length === 1 ? 'course' : 'courses'}
+                                </StyledText>
+                            </View>
+
+                            {loading ? (
+                                <View style={styles.loadingContainer}>
+                                    <ActivityIndicator size="large" color={Colors.primary} />
+                                    <StyledText style={styles.loadingText}>
+                                        {t('loadingCourses') || 'Loading courses...'}
+                                    </StyledText>
+                                </View>
+                            ) : courses.length > 0 ? (
+                                <View style={styles.coursesGrid}>
+                                    {courses.map((course) => (
+                                        <TouchableOpacity
+                                            key={course.id}
+                                            style={styles.courseCard}
+                                            onPress={() => navigation.navigate('CourseDetail', {course})}
+                                            activeOpacity={0.7}
+                                        >
+                                            <LinearGradient
+                                                colors={['#6A35C1', '#8B5FCF']}
+                                                style={styles.courseGradient}
+                                                start={{x: 0, y: 0}}
+                                                end={{x: 1, y: 1}}
+                                            >
+                                                <View style={styles.courseIcon}>
+                                                    <Ionicons name="book" size={32} color="#FFFFFF" />
+                                                </View>
+                                                <View style={styles.courseInfo}>
+                                                    <StyledText style={styles.courseTitle} numberOfLines={2}>
+                                                        {course.title}
+                                                    </StyledText>
+                                                    {course.description && (
+                                                        <StyledText style={styles.courseDescription} numberOfLines={2}>
+                                                            {course.description}
+                                                        </StyledText>
+                                                    )}
+                                                </View>
+                                                <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.8)" />
+                                            </LinearGradient>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            ) : (
+                                renderEmptyState()
+                            )}
+                        </View>
+
+                        {renderFooter()}
+                    </ScrollView>
                 </View>
             )}
         </View>
@@ -393,12 +490,34 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.2)',
         borderRadius: 12,
     },
-    coursesList: {
-        padding: 20,
-        paddingBottom: 100,
+    scrollContainer: {
+        flex: 1,
+    },
+    coursesSection: {
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    sectionTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#1F2937',
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+    },
+    courseCount: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontFamily: FontsEnum.Poppins_400Regular,
+    },
+    coursesGrid: {
+        gap: 16,
     },
     courseCard: {
-        marginBottom: 16,
         borderRadius: 16,
         overflow: 'hidden',
         shadowColor: '#000',
@@ -409,6 +528,7 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.15,
         shadowRadius: 8,
         elevation: 6,
+        marginBottom: 16,
     },
     courseGradient: {
         flexDirection: 'row',

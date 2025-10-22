@@ -7,6 +7,19 @@ export enum MediaEnum {
     AUDIO = 'AUDIO',
 }
 
+export enum ContentType {
+    PDF = 'PDF',
+    IMAGE = 'IMAGE',
+    VIDEO = 'VIDEO',
+    AUDIO = 'AUDIO',
+    DOCUMENT = 'DOCUMENT',
+    TEXT = 'TEXT',
+    LINK = 'LINK',
+    QUIZ = 'QUIZ',
+    ASSIGNMENT = 'ASSIGNMENT',
+    UNKNOWN = 'UNKNOWN',
+}
+
 export interface MediaDTO {
     id: number;
     type: MediaEnum;
@@ -101,5 +114,30 @@ export interface ContentsResponse {
     totalPages: number;
     size: number;
     number: number;
+}
+
+// Search Models
+export interface SearchResultDTO {
+    type: 'COURSE' | 'CHAPTER' | 'SUBSECTION';
+    id: number;
+    title: string;
+    description?: string;
+    courseTitle?: string;
+    chapterTitle?: string;
+    subsectionTitle?: string;
+    courseId?: number;
+    chapterId?: number;
+    subsectionId?: number;
+}
+
+export interface LastVisitedContentDTO {
+    id: number;
+    contentId: number;
+    contentTitle: string;
+    contentType: string;
+    courseTitle?: string;
+    chapterTitle?: string;
+    subsectionTitle?: string;
+    lastVisitedAt: string;
 }
 

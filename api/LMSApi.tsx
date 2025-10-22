@@ -8,13 +8,16 @@ import {
     CoursesResponse,
     ChaptersResponse,
     SubsectionsResponse,
-    ContentsResponse
+    ContentsResponse,
+    SearchResultDTO,
+    LastVisitedContentDTO
 } from "../models/LMS";
 
 const coursesEndpoint = `${Endpoints.CHEHADETI}/courses`;
 const chaptersEndpoint = `${Endpoints.CHEHADETI}/chapters`;
 const subsectionsEndpoint = `${Endpoints.CHEHADETI}/subsections`;
 const contentsEndpoint = `${Endpoints.CHEHADETI}/contents`;
+const searchEndpoint = `${Endpoints.CHEHADETI}/search`;
 
 const getCoursesByClasse = (classId: number) => {
     return apiClient.get<CourseDTO[]>(`${coursesEndpoint}/by-class/${classId}`);
@@ -148,6 +151,39 @@ const getContentById = (id: number) => {
     return apiClient.get<ContentDTO>(`${contentsEndpoint}/find/${id}`);
 };
 
+// Search API functions
+/**
+ * Search content by criteria
+ * GET /search/criteria?term={term}
+ */
+const searchByCriteria = (term: string) => {
+    return apiClient.get<SearchResultDTO[]>(`${searchEndpoint}/criteria`, { term });
+};
+
+/**
+ * Track content visit
+ * POST /search/track-visit/{contentId}
+ */
+const trackContentVisit = (contentId: number) => {
+    return apiClient.post(`${searchEndpoint}/track-visit/${contentId}`);
+};
+
+/**
+ * Get last visited content
+ * GET /search/last-visited
+ */
+const getLastVisitedContent = () => {
+    return apiClient.get<LastVisitedContentDTO>(`${searchEndpoint}/last-visited`);
+};
+
+/**
+ * Get recent visited content
+ * GET /search/recent-visits?limit={limit}
+ */
+const getRecentVisitedContent = (limit: number = 10) => {
+    return apiClient.get<LastVisitedContentDTO[]>(`${searchEndpoint}/recent-visits`, { limit });
+};
+
 export const LMSApi = {
     // Courses
     getCoursesByClasse,
@@ -173,5 +209,11 @@ export const LMSApi = {
     getPublishedContents,
     getAllContents,
     getContentById,
+    
+    // Search
+    searchByCriteria,
+    trackContentVisit,
+    getLastVisitedContent,
+    getRecentVisitedContent,
 };
 

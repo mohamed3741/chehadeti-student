@@ -12,6 +12,7 @@ import {
     Alert,
     Platform,
     AppState,
+    ScrollView,
 } from "react-native";
 import { useNavigation, type RouteProp, useFocusEffect } from "@react-navigation/native";
 import type { StackNavigationProp } from "@react-navigation/stack";
@@ -24,9 +25,11 @@ import { MediaEnum } from "../../models/LMS";
 import type { TabHomeParamList } from "../../types";
 import * as ScreenCapture from "expo-screen-capture";
 import PdfViewer from "../../components/PdfViewer";
+import { LMSApi } from "../../api/LMSApi";
+import { Toast } from "../../components/Toast";
 // NOTE: imports and styles intentionally omitted as requested.
 
-const { width } = Dimensions.get("window");
+const {width, height} = Dimensions.get('window');
 
 type ContentViewerScreenNavigationProp = StackNavigationProp<TabHomeParamList, "ContentViewer">;
 type ContentViewerScreenRouteProp = RouteProp<TabHomeParamList, "ContentViewer">;
@@ -60,7 +63,22 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
 
     const [focusKey, setFocusKey] = useState(0);
     const [isScreenCaptureEnabled, setIsScreenCaptureEnabled] = useState(false);
+    const [hasTrackedVisit, setHasTrackedVisit] = useState(false);
     const appState = useRef(AppState.currentState);
+
+    // Track content visit when screen is focused
+    const trackContentVisit = async () => {
+        if (hasTrackedVisit || !content?.id) return;
+        
+        try {
+            await LMSApi.trackContentVisit(content.id);
+            setHasTrackedVisit(true);
+            console.log("📊 Content visit tracked:", content.id);
+        } catch (error) {
+            console.error("❌ Failed to track content visit:", error);
+            // Don't show error to user as this is background functionality
+        }
+    };
 
     useFocusEffect(
         React.useCallback(() => {
@@ -78,6 +96,9 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
             };
             enableProtection();
 
+            // Track visit when screen is focused
+            trackContentVisit();
+
             // Re-render on focus (do NOT reset any loading flags here)
             setFocusKey((k) => k + 1);
 
@@ -87,7 +108,7 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
                 setIsScreenCaptureEnabled(false);
                 console.log("🔓 Screen capture protection disabled");
             };
-        }, [])
+        }, [content?.id, hasTrackedVisit])
     );
 
     useEffect(() => {
@@ -174,7 +195,11 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
                     source={{ uri: rawUrl }}
                     style={styles.pdf}
                     // We do NOT toggle any outer spinner here; avoid "stuck spinner" issues.
-                    onLoad={() => console.log("📄 PDF loaded (PdfViewer)")}
+                    onLoad={() => {
+                        console.log("📄 PDF loaded (PdfViewer)");
+                        // Track visit when PDF is successfully loaded
+                        trackContentVisit();
+                    }}
                     onError={() => {
                         console.log("❌ PDF error (PdfViewer)");
                         Alert.alert(t("error") || "Error", t("failedToLoadDocument") || "Failed to load document.");
@@ -204,38 +229,64 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
                     <StyledText style={styles.loadingText}>{t("loadingDocument") || "Loading..."}</StyledText>
                 </View>
             )}
-            <Image
-                key={`img-el-${focusKey}`}
-                source={{ uri: content.media?.link }}
-                style={styles.fullImage}
-                resizeMode="contain"
-                onLoadStart={() => setImageLoading(true)}
-                onLoadEnd={() => setImageLoading(false)}
-                onError={() => {
-                    setImageLoading(false);
-                    Alert.alert(t("error") || "Error", t("errorLoadingImage") || "Failed to load image");
-                }}
-            />
+            
+            <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                showsVerticalScrollIndicator={false}
+                showsHorizontalScrollIndicator={false}
+                minimumZoomScale={1}
+                maximumZoomScale={3}
+                bouncesZoom={true}
+                scrollEnabled={true}
+                pinchGestureEnabled={true}
+            >
+                <Image
+                    source={{ uri: content.media?.link }}
+                    style={styles.fullImage}
+                    resizeMode="contain"
+                    onLoadStart={() => setImageLoading(true)}
+                    onLoadEnd={() => {
+                        setImageLoading(false);
+                        // Track visit when image is successfully loaded
+                        trackContentVisit();
+                    }}
+                    onError={() => {
+                        setImageLoading(false);
+                        Alert.alert(t("error") || "Error", t("errorLoadingImage") || "Failed to load image");
+                    }}
+                />
+            </ScrollView>
+            
             <View style={styles.securityBadge}>
                 <Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
                 <StyledText style={styles.securityBadgeText}>
-                    {t("protectedContent") || "Protected Content"}
+                    {isScreenCaptureEnabled
+                        ? `${t("protected") || "Protected"} • ${t("screenshotBlocked") || "Screenshot Blocked"}`
+                        : `${t("protected") || "Protected"}`}
                 </StyledText>
             </View>
         </View>
     );
 
-    const renderDefault = () => (
-        <View style={styles.contentContainer}>
-            <View style={styles.placeholderContainer}>
-                <Ionicons name="document-text-outline" size={64} color={Colors.primary} />
-                <StyledText style={styles.placeholderTitle}>{content.title}</StyledText>
-                {content.description && (
-                    <StyledText style={styles.placeholderDescription}>{content.description}</StyledText>
-                )}
+    const renderDefault = () => {
+        // Track visit for text content immediately since there's no loading state
+        React.useEffect(() => {
+            trackContentVisit();
+        }, []);
+
+        return (
+            <View style={styles.contentContainer}>
+                <View style={styles.placeholderContainer}>
+                    <Ionicons name="document-text-outline" size={64} color={Colors.primary} />
+                    <StyledText style={styles.placeholderTitle}>{content.title}</StyledText>
+                    {content.description && (
+                        <StyledText style={styles.placeholderDescription}>{content.description}</StyledText>
+                    )}
+                </View>
             </View>
-        </View>
-    );
+        );
+    };
 
     // ---------- Simplified routing (trust contentType first) ----------
     const renderContent = () => {
@@ -319,10 +370,19 @@ const styles = StyleSheet.create({
         position: "relative",
     },
 
+    // ScrollView for zoom functionality
+    scrollView: {
+        flex: 1,
+    },
+    scrollContent: {
+        flexGrow: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
     // Image fills remaining screen; contain keeps aspect
     fullImage: {
-        width: "100%",
-        height: "100%",
+        width: width,
+        height: height - 150, // Account for header
     },
 
     // Native PDF view should stretch; width set to screen width for safety

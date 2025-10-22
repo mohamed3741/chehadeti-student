@@ -59,7 +59,7 @@ export interface ExchangeableTokenDto {
 
 // Refresh token request DTO
 export interface RefreshTokenDto {
-    refresh_token: string;
+    refreshToken: string;
 }
 
 // User verification code DTO

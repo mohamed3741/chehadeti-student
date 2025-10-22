@@ -16,6 +16,22 @@ export const decodeJwt = async () => {
     return {userName: decodedJwt.sub, token, refreshToken, accessTokenExpiry, refreshTokenExpiry};
 };
 
+export const isRefreshTokenExpired = async (): Promise<boolean> => {
+    const refreshToken = await getSecureData(DataKey.refreshToken);
+    if (typeof (refreshToken) !== 'string' || !refreshToken) {
+        return true;
+    }
+
+    try {
+        const {exp} = jwtDecode(refreshToken);
+        const currentTime = new Date().getTime() / 1000;
+        return currentTime > exp;
+    } catch (error) {
+        console.error('Error decoding refresh token:', error);
+        return true;
+    }
+};
+
 
 const isJwtExpired = (token) => {
     if (typeof (token) !== 'string' || !token) {
