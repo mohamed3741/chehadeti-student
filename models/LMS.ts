@@ -116,3 +116,28 @@ export interface ContentsResponse {
     number: number;
 }
 
+// Search Models
+export interface SearchResultDTO {
+    type: 'COURSE' | 'CHAPTER' | 'SUBSECTION';
+    id: number;
+    title: string;
+    description?: string;
+    courseTitle?: string;
+    chapterTitle?: string;
+    subsectionTitle?: string;
+    courseId?: number;
+    chapterId?: number;
+    subsectionId?: number;
+}
+
+export interface LastVisitedContentDTO {
+    id: number;
+    contentId: number;
+    contentTitle: string;
+    contentType: string;
+    courseTitle?: string;
+    chapterTitle?: string;
+    subsectionTitle?: string;
+    lastVisitedAt: string;
+}
+
