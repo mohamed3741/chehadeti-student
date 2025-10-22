@@ -17,6 +17,10 @@ export type TabHomeParamList = {
     ChapterDetail: {chapter: ChapterDTO};
     SubsectionContents: {subsection: SubsectionDTO};
     ContentViewer: {content: ContentDTO};
+    Profile: undefined;
+    Settings: undefined;
+    About: undefined;
+    EditPassword: undefined;
 };
 
 export type TabOrderParamList = {

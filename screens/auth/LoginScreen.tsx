@@ -27,6 +27,7 @@ import {useTranslation} from "react-i18next";
 import Colors from "../../constants/Colors"
 import {LoginResponse} from "../../models/LoginResponse";
 import LanguageModal from "../../components/LanguageModalize/LanguageModal";
+import { writingDir, textAlignFor } from "../../i18next";
 
 export default function LoginScreen({navigation, route}) {
     const [code, setCode] = useState("MR");
@@ -35,6 +36,11 @@ export default function LoginScreen({navigation, route}) {
     const [callingCode, setCallingCode] = useState('222');
     const [showCountryPicker, setShowCountryPicker] = useState(false);
     const [showLanguageModal, setShowLanguageModal] = useState(false);
+    
+    // RTL detection
+    const isRTL = writingDir() === 'rtl';
+    const textAlign = textAlignFor();
+    
     const {
         storeToken,
         rememberUser,
@@ -220,8 +226,6 @@ export default function LoginScreen({navigation, route}) {
                                         onChangeText={setPassword}
                                         value={password}
                                         secureTextEntry={!showPassword}
-                                        onFocus={() => setFocusedField("password")}
-                                        onBlur={() => setFocusedField(null)}
                                     />
                                     <TouchableOpacity
                                         style={styles.passwordToggle}
@@ -295,8 +299,7 @@ export default function LoginScreen({navigation, route}) {
                                 </LinearGradient>
                             </TouchableOpacity>
 
-                            {/* Sign Up Link */}
-                            <View style={styles.signupLinkContainer}>
+                            <View style={[styles.signupLinkContainer, isRTL && styles.signupLinkContainerRTL]}>
                                 <StyledText style={styles.signupLinkText}>
                                     {t("dontHaveAccount") || "Don't have an account?"}{" "}
                                 </StyledText>
@@ -616,6 +619,8 @@ const styles = StyleSheet.create({
         color: '#333333',
         fontFamily: FontsEnum.Poppins_400Regular,
     },
-
+    signupLinkContainerRTL: {
+        flexDirection: 'row-reverse',
+    },
 
 })

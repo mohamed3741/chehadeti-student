@@ -2,7 +2,7 @@
   "expo": {
     "name": "Chehadeti App",
     "slug": "chehadeti-app",
-    "version": "0.0.30",
+    "version": "0.0.32",
     "orientation": "portrait",
     "jsEngine": "hermes",
     "icon": "./assets/icons/icon.png",
@@ -34,7 +34,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/images/logo-splash.png",
+        "foregroundImage": "./assets/icons/icon.png",
         "backgroundColor": "#FFFFFF"
       },
       "permissions": [

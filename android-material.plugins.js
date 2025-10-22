@@ -1,5 +1,5 @@
 // android-material.plugins.js
-const { withAndroidStyles } = require('@expo/config-plugins');
+const { withAndroidStyles } = require('expo/config-plugins');
 
 module.exports = function androidStyles(config) {
     return withAndroidStyles(config, async config => {

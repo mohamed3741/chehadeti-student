@@ -25,17 +25,16 @@ import {
 import {getData} from "./utils/AsyncStorage";
 import {DataKey} from "./models/Static";
 import {useAppNetInfo} from "./hooks/useAppNetInfo";
-import {useLang} from "./hooks/useLang";
 import * as SplashScreen from "expo-splash-screen";
 import {ActionSheetProvider} from "@expo/react-native-action-sheet";
 import {initI18n} from "./i18next";
+import useCachedResources from './hooks/useCachedResources';
 
 
 export default App;
 
 function App() {
     const {isInternetReachable, checkNetwork} = useAppNetInfo(true);
-    const {currentLangCode} = useLang();
 
     let [fontsLoaded] = useFonts({
         Poppins_700Bold,
@@ -45,14 +44,9 @@ function App() {
         Poppins_300Light
     });
 
-    useEffect(() => {
-        if (currentLangCode) {
-            moment.locale(currentLangCode);
-        }
-    }, [currentLangCode]);
+
 
     moment.relativeTimeThreshold('ss', 0);
-
 
     useEffect(() => {
         (async () => {
@@ -62,23 +56,39 @@ function App() {
         })()
     }, []);
 
-
     const colorScheme = useColorScheme();
-    if (!fontsLoaded) return null;
+    
+    if (!fontsLoaded) {
+        return null;
+    }
 
     return (
         <ActionSheetProvider>
             <GestureHandlerRootView style={{flex: 1}}>
                 <SafeAreaProvider style={{backgroundColor: '#FFF'}} key={makeId()}>
                     <Store>
-                        <Navigation colorScheme={colorScheme}/>
-                        <StatusBar backgroundColor='black'/>
+                        <AppContent colorScheme={colorScheme}/>
                     </Store>
                 </SafeAreaProvider>
             </GestureHandlerRootView>
         </ActionSheetProvider>
     );
 
+}
+
+function AppContent({colorScheme}) {
+    const isLoadingComplete = useCachedResources();
+    
+    if (!isLoadingComplete) {
+        return null;
+    }
+    
+    return (
+        <>
+            <Navigation colorScheme={colorScheme}/>
+            <StatusBar backgroundColor='black'/>
+        </>
+    );
 }
 
 AppRegistry.registerComponent('MarsaRide', () => App);

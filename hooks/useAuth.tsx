@@ -3,7 +3,6 @@ import {DataKey} from "../models/Static";
 import {clearSecureData, getSecureData, storeSecureData} from "../utils/SecureStorage";
 import {UserApi} from "../api/UserApi";
 import {decodeJwt} from "../utils/JwtHelper";
-import {useLang} from "./useLang";
 import * as Application from "expo-application";
 import {useNotificationReceived} from "./useNotificationReceived";
 import {useDispatch, useSelector} from "react-redux";
@@ -23,7 +22,6 @@ export const useAuth = () => {
     const dispatch = useDispatch()
 
     const {updateUserNotif} = useNotificationReceived();
-    const {currentLangApiEnum} = useLang();
 
     useEffect(() => {
         apiClient.setOnUnauthorizedCallback(async () => {
@@ -95,11 +93,9 @@ export const useAuth = () => {
 
     const saveNotificationToken = async (token) => {
         if (stateAuth?.connectedUser) {
-            const lang = await currentLangApiEnum();
             const body = token ? {
                     userId: stateAuth?.connectedUser?.id,
                     username: stateAuth?.connectedUser?.username,
-                    lang,
                     version: Application.nativeApplicationVersion,
                     ...token
                 } :
