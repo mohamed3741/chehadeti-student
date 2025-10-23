@@ -11,6 +11,7 @@ import {
 import {useAuth} from "./useAuth";
 import * as Updates from 'expo-updates';
 import Constants from "expo-constants";
+import { __DEV__ } from 'react-native';
 
 export default function useCachedResources() {
     const [isLoadingComplete, setLoadingComplete] = useState(false);
@@ -23,16 +24,28 @@ export default function useCachedResources() {
     });
     const {refreshUser} = useAuth();
 
+    console.log('useCachedResources - fontsLoaded:', fontsLoaded, 'isLoadingComplete:', isLoadingComplete);
+
     // Load any resources or data that we need prior to rendering the app
     useEffect(() => {
         (async () => {
             try {
-                if (Constants.appOwnership !== 'expo') {
-                    const update = await Updates.checkForUpdateAsync();
-                    if (update.isAvailable) {
-                        await Updates.fetchUpdateAsync();
-                        // ... notify user of update ...
-                        await Updates.reloadAsync();
+                // Only check for updates in production builds, not in development
+                if (Constants.appOwnership !== 'expo' && !__DEV__) {
+                    try {
+                        const update = await Updates.checkForUpdateAsync();
+                        if (update.isAvailable) {
+                            await Updates.fetchUpdateAsync();
+                            // ... notify user of update ...
+                            await Updates.reloadAsync();
+                        }
+                    } catch (updateError) {
+                        // Silently handle update errors in development
+                        if (__DEV__) {
+                            console.log('Update check skipped in development mode');
+                        } else {
+                            console.warn('Error checking for updates:', updateError);
+                        }
                     }
                 }
 
@@ -42,8 +55,10 @@ export default function useCachedResources() {
                 // We might want to provide this error information to an error reporting service
                 console.warn('Error in useCachedResources:', e);
             } finally {
-                setLoadingComplete(true);
+                // Ensure splash screen is hidden
+                console.log('useCachedResources - Setting loading complete to true');
                 await SplashScreen.hideAsync().catch(reason => console.log('Error hiding splash screen:', reason));
+                setLoadingComplete(true);
             }
         })()
     }, []);
