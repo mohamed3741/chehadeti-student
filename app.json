@@ -2,7 +2,7 @@
   "expo": {
     "name": "شهادتي",
     "slug": "chehadeti-app",
-    "version": "0.0.33",
+    "version": "0.0.36",
     "orientation": "portrait",
     "jsEngine": "hermes",
     "icon": "./assets/icons/icon.png",
@@ -26,6 +26,7 @@
       "supportsTablet": true,
       "appleTeamId": "J25B6JQ586",
       "infoPlist": {
+        "NSCameraUsageDescription": "Chehadeti uses the camera to take and upload student photos during enrollment and when updating school profiles",
         "ITSAppUsesNonExemptEncryption": false
       },
       "bundleIdentifier": "com.chehadeti.admin",
@@ -41,7 +42,7 @@
         "SYSTEM_ALERT_WINDOW"
       ],
       "package": "com.chehadeti.admin",
-      "versionCode": 11
+      "versionCode": 13
     },
     "web": {
       "favicon": "./assets/images/icon.png"
