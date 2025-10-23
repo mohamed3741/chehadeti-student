@@ -45,17 +45,17 @@ export const LastVisitedComponent: React.FC<LastVisitedComponentProps> = ({
             ]);
 
             if (lastVisitedResult.ok && lastVisitedResult.data) {
-                console.log('📊 Last visited data received:', lastVisitedResult.data);
+
                 setLastVisited(lastVisitedResult.data);
             } else {
-                console.log('❌ Last visited API failed:', lastVisitedResult);
+
             }
 
             if (recentVisitsResult.ok && recentVisitsResult.data) {
-                console.log('📊 Recent visits data received:', recentVisitsResult.data);
+
                 setRecentVisits(recentVisitsResult.data);
             } else {
-                console.log('❌ Recent visits API failed:', recentVisitsResult);
+
             }
         } catch (error) {
             console.error('Error fetching last visited data:', error);
@@ -139,14 +139,14 @@ export const LastVisitedComponent: React.FC<LastVisitedComponentProps> = ({
     };
 
     const renderLastVisitedCard = () => {
-        console.log('🎯 renderLastVisitedCard called with:', lastVisited);
+
         
         if (!lastVisited) {
-            console.log('❌ No lastVisited data, not rendering card');
+
             return null;
         }
 
-        console.log('✅ Rendering last visited card for:', lastVisited.contentTitle);
+
 
         return (
             <TouchableOpacity
@@ -256,7 +256,7 @@ export const LastVisitedComponent: React.FC<LastVisitedComponentProps> = ({
 
     // Don't render anything if loading or no data
     if (loading) {
-        console.log('🔄 LastVisitedComponent: Loading state, hiding component');
+
         return null; // Hide component while loading
     }
 
@@ -270,11 +270,11 @@ export const LastVisitedComponent: React.FC<LastVisitedComponentProps> = ({
 
     // Don't render anything if there's no recent activity
     if (!lastVisited && recentVisits.length === 0) {
-        console.log('❌ LastVisitedComponent: No data, hiding component');
+
         return null; // Hide component when no data
     }
 
-    console.log('✅ LastVisitedComponent: Rendering component with data');
+
 
     return (
         <View style={styles.container}>

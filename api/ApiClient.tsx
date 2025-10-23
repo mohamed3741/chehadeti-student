@@ -2,10 +2,10 @@ import { create, ApisauceInstance } from "apisauce";
 import Environement from "../constants/Environement";
 import { getSecureData } from "../utils/SecureStorage";
 import { DataKey } from "../models/Static";
-import { UserApi } from "./UserApi";
 import { RefreshTokenDto } from "../models/UserModel";
 import { storeSecureData } from "../utils/SecureStorage";
 import { isRefreshTokenExpired } from "../utils/JwtHelper";
+import { Endpoints } from "./Endpoints";
 
 interface ExtendedApisauceInstance extends ApisauceInstance {
     setOnUnauthorizedCallback: (callback: () => void) => void;
@@ -65,7 +65,7 @@ apiClient.addResponseTransform(async (response) => {
                 }
 
                 const refreshTokenDto: RefreshTokenDto = { refreshToken };
-                const refreshResult = await UserApi.refreshToken(refreshTokenDto);
+                const refreshResult = await apiClient.post(`${Environement.url}${Endpoints.CHEHADETI}/users/refresh-token`, refreshTokenDto);
                 
                 if (refreshResult.ok && refreshResult.data) {
                     const loginData = refreshResult.data;

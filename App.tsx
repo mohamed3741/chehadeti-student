@@ -2,6 +2,7 @@ import 'react-native-gesture-handler';
 import {StatusBar} from 'expo-status-bar';
 import React, {useEffect} from 'react';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {Text} from 'react-native';
 import useColorScheme from './hooks/useColorScheme';
 import Navigation from './navigation';
 import Store from './store/Store'
@@ -50,16 +51,25 @@ function App() {
 
     useEffect(() => {
         (async () => {
-            await SplashScreen.preventAutoHideAsync();
-            const currentLang = await getData(DataKey.currentLang)
-            await initI18n();
+            try {
+                await SplashScreen.preventAutoHideAsync();
+                const currentLang = await getData(DataKey.currentLang)
+                await initI18n();
+            } catch (error) {
+                console.warn('Error in App initialization:', error);
+            }
         })()
     }, []);
 
     const colorScheme = useColorScheme();
     
     if (!fontsLoaded) {
-        return null;
+        console.log('App - Fonts not loaded yet, showing loading');
+        return (
+            <SafeAreaProvider style={{flex: 1, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center'}}>
+                <Text style={{fontSize: 18, color: '#333'}}>Loading fonts...</Text>
+            </SafeAreaProvider>
+        );
     }
 
     return (
@@ -79,9 +89,18 @@ function App() {
 function AppContent({colorScheme}) {
     const isLoadingComplete = useCachedResources();
     
+    console.log('AppContent - isLoadingComplete:', isLoadingComplete);
+    
     if (!isLoadingComplete) {
-        return null;
+        console.log('AppContent - Still loading, showing loading screen');
+        return (
+            <SafeAreaProvider style={{flex: 1, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center'}}>
+                <Text style={{fontSize: 18, color: '#333'}}>Loading app...</Text>
+            </SafeAreaProvider>
+        );
     }
+    
+    console.log('AppContent - Loading complete, rendering Navigation');
     
     return (
         <>

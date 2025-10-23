@@ -23,9 +23,12 @@ export default function Navigation({colorScheme}) {
     const [sessionOpened, setSessionOpened] = useState(false);
     const navigationReadyRef = useRef(false);
 
+    console.log('Navigation - token:', token, 'connectedUser:', connectedUser, 'sessionOpened:', sessionOpened);
 
     useEffect(() => {
-        setSessionOpened(Boolean(token));
+        const newSessionOpened = Boolean(token);
+        console.log('Navigation - Setting sessionOpened to:', newSessionOpened);
+        setSessionOpened(newSessionOpened);
     }, [token]);
 
     return (
