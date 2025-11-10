@@ -80,6 +80,14 @@ const getClasses = () => {
     return apiClient.get<ClasseDTO[]>(`${classesEndPoint}/list`);
 };
 
+/**
+ * Delete current authenticated student account
+ * POST /students/delete-account
+ */
+const deleteAccount = (password: string) => {
+    return apiClient.post(`${endPoint}/delete-account?password=${encodeURIComponent(password)}`);
+};
+
 export const StudentApi = {
     createStudent,
     getStudentById,
@@ -89,5 +97,6 @@ export const StudentApi = {
     getStudentByEmail,
     signup,
     findMe,
-    getClasses
+    getClasses,
+    deleteAccount
 };
