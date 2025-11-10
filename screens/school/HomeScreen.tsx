@@ -75,7 +75,6 @@ const HomeScreen = () => {
 
                     setCourses(sortedCourses);
                 } else if (result?.data) {
-                    // Handle case where data might not be an array
 
                     setCourses([result.data]);
                 } else {

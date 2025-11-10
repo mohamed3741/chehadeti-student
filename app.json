@@ -42,7 +42,7 @@
         "SYSTEM_ALERT_WINDOW"
       ],
       "package": "com.chehadeti.admin",
-      "versionCode": 13
+      "versionCode": 14
     },
     "web": {
       "favicon": "./assets/images/icon.png"

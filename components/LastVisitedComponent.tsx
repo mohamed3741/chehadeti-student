@@ -281,34 +281,7 @@ export const LastVisitedComponent: React.FC<LastVisitedComponentProps> = ({
             {/* Last Visited Card */}
             {renderLastVisitedCard()}
             
-            {/* Recent Visits */}
-            {recentVisits.length > 0 && (
-                <View style={styles.recentVisitsSection}>
-                    <View style={styles.sectionHeader}>
-                        <StyledText style={styles.sectionTitle}>
-                            Recent Visits
-                        </StyledText>
-                        <TouchableOpacity onPress={onRefresh} style={styles.refreshButton}>
-                            <Ionicons name="refresh" size={16} color={Colors.primary} />
-                        </TouchableOpacity>
-                    </View>
-                    
-                    <FlatList
-                        data={recentVisits}
-                        renderItem={renderRecentVisitItem}
-                        keyExtractor={(item) => item.id.toString()}
-                        showsVerticalScrollIndicator={false}
-                        scrollEnabled={false}
-                        refreshControl={
-                            <RefreshControl
-                                refreshing={refreshing}
-                                onRefresh={onRefresh}
-                                colors={[Colors.primary]}
-                            />
-                        }
-                    />
-                </View>
-            )}
+
         </View>
     );
 };

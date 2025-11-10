@@ -9,6 +9,10 @@ import {
     Dimensions,
     Image,
     Linking,
+    Modal,
+    TextInput,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import {useNavigation} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
@@ -20,6 +24,9 @@ import Colors from "../../constants/Colors";
 import {useAuth} from "../../hooks/useAuth";
 import {LinearGradient} from "expo-linear-gradient";
 import {TabHomeParamList} from "../../types";
+import {StudentApi} from "../../api/studentApi";
+import {useLoader} from "../../hooks/useLoader";
+import {Toast} from "../../components/Toast";
 
 const {width, height} = Dimensions.get('window');
 
@@ -32,6 +39,11 @@ const ProfileScreen: React.FC<ProfileScreenProps> = () => {
     const {t} = useTranslation();
     const {connectedUser, logOut} = useAuth();
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [deletePassword, setDeletePassword] = useState('');
+    const [showDeletePassword, setShowDeletePassword] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const {setLoader, removeLoader} = useLoader();
 
     const handleLogOut = async () => {
         Alert.alert(
@@ -65,6 +77,80 @@ const ProfileScreen: React.FC<ProfileScreenProps> = () => {
         if (!phone) return '';
         // Format phone number for display
         return phone.replace(/(\+222)(\d{2})(\d{3})(\d{3})/, '$1 $2 $3 $4');
+    };
+
+    const handleDeleteAccount = () => {
+        Alert.alert(
+            t("Delete your account") || "Delete your account",
+            t("Are you sure you want to delete your account?") || "Are you sure you want to delete your account? This action cannot be undone.",
+            [
+                {
+                    text: t("cancel") || "Cancel",
+                    style: "cancel",
+                },
+                {
+                    text: t("Delete your account") || "Delete Account",
+                    style: "destructive",
+                    onPress: () => {
+                        setShowDeleteModal(true);
+                    },
+                },
+            ]
+        );
+    };
+
+    const confirmDeleteAccount = async () => {
+        if (!deletePassword.trim()) {
+            Alert.alert(
+                t("error") || "Error",
+                t("password required") || "Password is required"
+            );
+            return;
+        }
+
+        setIsDeleting(true);
+        setLoader();
+
+        try {
+            const result = await StudentApi.deleteAccount(deletePassword);
+            
+            if (result.ok) {
+                removeLoader();
+                setIsDeleting(false);
+                setShowDeleteModal(false);
+                setDeletePassword('');
+                
+                Toast(t("Your account deleted successfully") || "Your account has been deleted successfully");
+                
+                // Log out the user after successful deletion
+                setTimeout(async () => {
+                    await logOut();
+                }, 1000);
+            } else {
+                removeLoader();
+                setIsDeleting(false);
+                
+                if (result.status === 401 || result.status === 403) {
+                    Alert.alert(
+                        t("error") || "Error",
+                        t("Incorrect password") || "Incorrect password. Please try again."
+                    );
+                } else {
+                    Alert.alert(
+                        t("error") || "Error",
+                        t("An error occurred while deleting your account") || "An error occurred while deleting your account. Please try again."
+                    );
+                }
+            }
+        } catch (error) {
+            console.error('Delete account error:', error);
+            removeLoader();
+            setIsDeleting(false);
+            Alert.alert(
+                t("error") || "Error",
+                t("An error occurred while deleting your account") || "An error occurred while deleting your account. Please try again."
+            );
+        }
     };
 
     const getInitials = (firstName: string, lastName: string) => {
@@ -264,6 +350,18 @@ const ProfileScreen: React.FC<ProfileScreenProps> = () => {
                     </View>
                 </View>
 
+                {/* Delete Account Button */}
+                <TouchableOpacity
+                    style={styles.deleteAccountButton}
+                    onPress={handleDeleteAccount}
+                    activeOpacity={0.8}
+                >
+                    <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                    <StyledText style={styles.deleteAccountButtonText}>
+                        {t("Delete your account") || "Delete Account"}
+                    </StyledText>
+                </TouchableOpacity>
+
                 {/* Logout Button */}
                 <TouchableOpacity
                     style={[styles.logoutButton, isLoggingOut && styles.logoutButtonDisabled]}
@@ -280,6 +378,106 @@ const ProfileScreen: React.FC<ProfileScreenProps> = () => {
                 {/* Bottom Spacing */}
                 <View style={styles.bottomSpacing} />
             </ScrollView>
+
+            {/* Delete Account Password Modal */}
+            <Modal
+                visible={showDeleteModal}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => {
+                    if (!isDeleting) {
+                        setShowDeleteModal(false);
+                        setDeletePassword('');
+                    }
+                }}
+            >
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={styles.modalContainer}
+                >
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <View style={styles.modalHeader}>
+                                <StyledText style={styles.modalTitle}>
+                                    {t("Delete your account") || "Delete Account"}
+                                </StyledText>
+                                <TouchableOpacity
+                                    onPress={() => {
+                                        if (!isDeleting) {
+                                            setShowDeleteModal(false);
+                                            setDeletePassword('');
+                                        }
+                                    }}
+                                    disabled={isDeleting}
+                                >
+                                    <Ionicons name="close" size={24} color="#6B7280" />
+                                </TouchableOpacity>
+                            </View>
+
+                            <StyledText style={styles.modalDescription}>
+                                {t("Are you sure you want to delete your account?") || "Are you sure you want to delete your account? This action cannot be undone. Please enter your password to confirm."}
+                            </StyledText>
+
+                            <View style={styles.passwordInputContainer}>
+                                <StyledText style={styles.passwordLabel}>
+                                    {t("password") || "Password"}
+                                </StyledText>
+                                <View style={styles.passwordInputWrapper}>
+                                    <TextInput
+                                        style={styles.passwordInput}
+                                        value={deletePassword}
+                                        onChangeText={setDeletePassword}
+                                        placeholder={t("enterPassword") || "Enter your password"}
+                                        placeholderTextColor="#9CA3AF"
+                                        secureTextEntry={!showDeletePassword}
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
+                                        editable={!isDeleting}
+                                    />
+                                    <TouchableOpacity
+                                        style={styles.eyeButton}
+                                        onPress={() => setShowDeletePassword(!showDeletePassword)}
+                                        disabled={isDeleting}
+                                    >
+                                        <Ionicons
+                                            name={showDeletePassword ? "eye-off-outline" : "eye-outline"}
+                                            size={20}
+                                            color="#6B7280"
+                                        />
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+
+                            <View style={styles.modalButtons}>
+                                <TouchableOpacity
+                                    style={[styles.modalCancelButton, isDeleting && styles.modalButtonDisabled]}
+                                    onPress={() => {
+                                        if (!isDeleting) {
+                                            setShowDeleteModal(false);
+                                            setDeletePassword('');
+                                        }
+                                    }}
+                                    disabled={isDeleting}
+                                >
+                                    <StyledText style={styles.modalCancelButtonText}>
+                                        {t("cancel") || "Cancel"}
+                                    </StyledText>
+                                </TouchableOpacity>
+
+                                <TouchableOpacity
+                                    style={[styles.modalDeleteButton, isDeleting && styles.modalButtonDisabled]}
+                                    onPress={confirmDeleteAccount}
+                                    disabled={isDeleting}
+                                >
+                                    <StyledText style={styles.modalDeleteButtonText}>
+                                        {isDeleting ? (t("saving") || "Deleting...") : (t("Delete your account") || "Delete Account")}
+                                    </StyledText>
+                                </TouchableOpacity>
+                            </View>
+                        </View>
+                    </View>
+                </KeyboardAvoidingView>
+            </Modal>
         </View>
     );
 };
@@ -495,6 +693,147 @@ const styles = StyleSheet.create({
     },
     bottomSpacing: {
         height: 20,
+    },
+    deleteAccountButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#EF4444',
+        paddingVertical: 16,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        marginTop: 8,
+        marginBottom: 12,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
+        gap: 8,
+    },
+    deleteAccountButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#EF4444',
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+    },
+    modalContainer: {
+        flex: 1,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 20,
+    },
+    modalContent: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 24,
+        width: '100%',
+        maxWidth: 400,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 4,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        color: '#1F2937',
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+    },
+    modalDescription: {
+        fontSize: 14,
+        color: '#6B7280',
+        fontFamily: FontsEnum.Poppins_400Regular,
+        marginBottom: 24,
+        lineHeight: 20,
+    },
+    passwordInputContainer: {
+        marginBottom: 24,
+    },
+    passwordLabel: {
+        fontSize: 14,
+        fontWeight: '500',
+        color: '#374151',
+        fontFamily: FontsEnum.Poppins_500Medium,
+        marginBottom: 8,
+    },
+    passwordInputWrapper: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+    },
+    passwordInput: {
+        flex: 1,
+        fontSize: 16,
+        color: '#1F2937',
+        fontFamily: FontsEnum.Poppins_400Regular,
+        paddingRight: 12,
+    },
+    eyeButton: {
+        padding: 4,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    modalCancelButton: {
+        flex: 1,
+        paddingVertical: 14,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        backgroundColor: '#F3F4F6',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    modalCancelButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#374151',
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+    },
+    modalDeleteButton: {
+        flex: 1,
+        paddingVertical: 14,
+        paddingHorizontal: 24,
+        borderRadius: 12,
+        backgroundColor: '#EF4444',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    modalDeleteButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#FFFFFF',
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+    },
+    modalButtonDisabled: {
+        opacity: 0.6,
     },
 });
 
