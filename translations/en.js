@@ -36,6 +36,8 @@ export const en = {
     "first_last_required": "First name and last name are required.",
 
     "call": "Call",
+    "activationShortMessage": "Please contact the school team to activate your access.",
+    "whatsappUnavailable": "WhatsApp is not installed on this device.",
     "details": "Details",
 
     "no_teachers": "No teachers",
