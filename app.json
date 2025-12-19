@@ -57,6 +57,13 @@
       "expo-localization",
       "./android-material.plugins",
       [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

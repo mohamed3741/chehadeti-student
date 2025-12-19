@@ -812,5 +812,11 @@ export const en = {
     "saving": "Saving...",
     "savePassword": "Save Password",
     "failedToLoadDocument": "Failed to load document. Please try again.",
-    "errorLoadingImage": "Failed to load image"
+    "errorLoadingImage": "Failed to load image",
+    "pictureInPictureNotSupported": "Picture-in-Picture Not Supported",
+    "pictureInPictureNotSupportedMessage": "Picture-in-Picture is not supported on this device.",
+    "pictureInPictureError": "Picture-in-Picture Error",
+    "pictureInPictureErrorMessage": "Failed to toggle Picture-in-Picture mode. Please try again.",
+    "enterPictureInPicture": "Picture-in-Picture",
+    "exitPictureInPicture": "Exit PiP"
 };
