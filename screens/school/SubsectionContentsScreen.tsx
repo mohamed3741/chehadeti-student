@@ -8,6 +8,7 @@ import {
     RefreshControl,
     StatusBar,
     Dimensions,
+    Image,
 } from 'react-native';
 import {useNavigation, RouteProp} from '@react-navigation/native';
 import {StackNavigationProp} from '@react-navigation/stack';
@@ -175,24 +176,55 @@ const SubsectionContentsScreen = ({route}: SubsectionContentsScreenProps) => {
         }
     };
 
-    const renderContentCard = ({item}: {item: ContentDTO}) => {
+    const ContentCardItem = React.memo(({item}: {item: ContentDTO}) => {
+        const cardNavigation = useNavigation<SubsectionContentsScreenNavigationProp>();
         const iconName = getContentIcon(item.contentType);
         const iconColor = getContentColor(item.contentType);
         const contentTypeLabel = getContentTypeLabel(item.contentType);
         const contentType = getContentTypeFromString(item.contentType);
+        const isVideo = contentType === ContentType.VIDEO;
+        const hasThumbnail = isVideo && item.media?.thumbnail;
+        const [thumbnailLoading, setThumbnailLoading] = useState(true);
+        const [thumbnailError, setThumbnailError] = useState(false);
 
         return (
             <TouchableOpacity
-                style={styles.contentCard}
-                onPress={() => navigation.navigate('ContentViewer', {content: item})}
+                style={[styles.contentCard, isVideo && hasThumbnail && styles.videoContentCard]}
+                onPress={() => cardNavigation.navigate('ContentViewer', {content: item})}
                 activeOpacity={0.7}
             >
-                <LinearGradient
-                    colors={[iconColor + '15', iconColor + '05']}
-                    style={styles.contentIconContainer}
-                >
-                    <Ionicons name={iconName as any} size={28} color={iconColor} />
-                </LinearGradient>
+                {hasThumbnail && !thumbnailError ? (
+                    <View style={styles.thumbnailContainer}>
+                        {thumbnailLoading && (
+                            <View style={styles.thumbnailLoader}>
+                                <ActivityIndicator size="small" color={iconColor} />
+                            </View>
+                        )}
+                        <Image
+                            source={{ uri: item.media.thumbnail }}
+                            style={styles.thumbnailImage}
+                            resizeMode="cover"
+                            onLoadStart={() => setThumbnailLoading(true)}
+                            onLoadEnd={() => setThumbnailLoading(false)}
+                            onError={() => {
+                                setThumbnailLoading(false);
+                                setThumbnailError(true);
+                            }}
+                        />
+                        <View style={styles.playButtonOverlay}>
+                            <View style={styles.playButton}>
+                                <Ionicons name="play" size={18} color={iconColor} style={styles.playIcon} />
+                            </View>
+                        </View>
+                    </View>
+                ) : (
+                    <LinearGradient
+                        colors={[iconColor + '15', iconColor + '05']}
+                        style={styles.contentIconContainer}
+                    >
+                        <Ionicons name={iconName as any} size={28} color={iconColor} />
+                    </LinearGradient>
+                )}
                 <View style={styles.contentInfo}>
                     <StyledText style={styles.contentTitle} numberOfLines={2}>
                         {item.title}
@@ -215,6 +247,10 @@ const SubsectionContentsScreen = ({route}: SubsectionContentsScreenProps) => {
                 </View>
             </TouchableOpacity>
         );
+    });
+
+    const renderContentCard = ({item}: {item: ContentDTO}) => {
+        return <ContentCardItem item={item} />;
     };
 
     const renderEmptyState = () => (
@@ -378,6 +414,10 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#F1F5F9',
     },
+    videoContentCard: {
+        borderWidth: 1.5,
+        borderColor: '#EF4444' + '30',
+    },
     contentIconContainer: {
         width: 60,
         height: 60,
@@ -385,6 +425,86 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 16,
+    },
+    thumbnailContainer: {
+        width: 90,
+        height: 90,
+        borderRadius: 16,
+        marginRight: 16,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        backgroundColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    thumbnailImage: {
+        width: 90,
+        height: 90,
+    },
+    thumbnailLoader: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F3F4F6',
+    },
+    playButtonOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    },
+    playButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: '#FFFFFF',
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 5,
+    },
+    playIcon: {
+        marginLeft: 2, // Slight offset to center the play icon visually
+    },
+    videoBadge: {
+        position: 'absolute',
+        top: 6,
+        right: 6,
+        width: 26,
+        height: 26,
+        borderRadius: 13,
+        justifyContent: 'center',
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3,
+        elevation: 4,
     },
     contentInfo: {
         flex: 1,

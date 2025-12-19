@@ -36,8 +36,7 @@
       }
     },
     "staging": {
-      "distribution": "internal",
-      "developmentClient": true,
+      "distribution": "store",
       "channel": "staging",
       "env": {
         "ENVIRONMENT": "staging",
