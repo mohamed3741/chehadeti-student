@@ -11,7 +11,6 @@ import {
 import {useAuth} from "./useAuth";
 import * as Updates from 'expo-updates';
 import Constants from "expo-constants";
-import { __DEV__ } from 'react-native';
 
 export default function useCachedResources() {
     const [isLoadingComplete, setLoadingComplete] = useState(false);
@@ -31,7 +30,8 @@ export default function useCachedResources() {
         (async () => {
             try {
                 // Only check for updates in production builds, not in development
-                if (Constants.appOwnership !== 'expo' && !__DEV__) {
+                const isDev = typeof __DEV__ !== 'undefined' && __DEV__;
+                if (Constants.appOwnership !== 'expo' && !isDev) {
                     try {
                         const update = await Updates.checkForUpdateAsync();
                         if (update.isAvailable) {
@@ -41,7 +41,7 @@ export default function useCachedResources() {
                         }
                     } catch (updateError) {
                         // Silently handle update errors in development
-                        if (__DEV__) {
+                        if (isDev) {
                             console.log('Update check skipped in development mode');
                         } else {
                             console.warn('Error checking for updates:', updateError);

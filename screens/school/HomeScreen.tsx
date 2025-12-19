@@ -36,6 +36,7 @@ const HomeScreen = () => {
     const [isModalVisible, setIsModalVisible] = useState(false);
 
     const [showVerificationModal, setShowVerificationModal] = useState(false);
+    const contactNumber = '+22236841098';
     const [courses, setCourses] = useState<CourseDTO[]>([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -199,6 +200,23 @@ const HomeScreen = () => {
         await logOut();
     };
 
+    const handleCallPress = async () => {
+        const url = `tel:${contactNumber}`;
+        if (await Linking.canOpenURL(url)) {
+            await Linking.openURL(url);
+        }
+    };
+
+    const handleWhatsAppPress = async () => {
+        const phone = contactNumber.replace(/[^\d]/g, '');
+        const url = `https://wa.me/${phone}`;
+        if (await Linking.canOpenURL(url)) {
+            await Linking.openURL(url);
+        } else {
+            Toast(t('whatsappUnavailable') || 'WhatsApp is not installed');
+        }
+    };
+
 
     const renderEmptyState = () => (
         <View style={styles.emptyContainer}>
@@ -229,25 +247,39 @@ const HomeScreen = () => {
                         </View>
 
                         <StyledText style={styles.modalTitle}>
-                            {t('accountPendingActivation') || 'Account Pending Activation'}
+                            {t('accountPendingActivation') || 'Account pending activation'}
                         </StyledText>
 
                         <StyledText style={styles.modalMessage}>
-                            {t('accountPendingMessage') || 'Your account has been created successfully! Please contact the administrator to activate your account.'}
+                            {t('activationShortMessage') || 'Please contact the school team to activate your access.'}
                         </StyledText>
 
-                        <View style={styles.infoBox}>
-                            <Ionicons name="information-circle-outline" size={22} color={Colors.primary} />
-                            <StyledText style={styles.infoText}>
-                                {t('activationNoticeMessage') || 'You will be notified once your account is activated and you can access all features.'}
-                            </StyledText>
-                        </View>
+                        <TouchableOpacity
+                            activeOpacity={0.7}
+                            style={styles.contactNumberCard}
+                            onPress={handleCallPress}
+                        >
+                            <Ionicons name="call-outline" size={22} color={Colors.primary} />
+                            <StyledText style={styles.contactNumberText}>{contactNumber}</StyledText>
+                        </TouchableOpacity>
 
-                        <View style={styles.contactBox}>
-                            <Ionicons name="call-outline" size={20} color="#666666" />
-                            <StyledText style={styles.contactText}>
-                                {t('contactAdminInstruction') || 'Contact your administrator for quick activation'}
-                            </StyledText>
+                        <View style={styles.contactButtonsRow}>
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.callButton]}
+                                onPress={handleCallPress}
+                                activeOpacity={0.9}
+                            >
+                                <Ionicons name="call" size={18} color="#fff" />
+                                <StyledText style={styles.actionButtonText}>{t('call') || 'Call'}</StyledText>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[styles.actionButton, styles.whatsappButton]}
+                                onPress={handleWhatsAppPress}
+                                activeOpacity={0.9}
+                            >
+                                <Ionicons name="logo-whatsapp" size={18} color="#fff" />
+                                <StyledText style={styles.actionButtonText}>WhatsApp</StyledText>
+                            </TouchableOpacity>
                         </View>
 
                         <View style={styles.modalButtonsContainer}>
@@ -263,7 +295,7 @@ const HomeScreen = () => {
                                     end={{ x: 1, y: 0 }}
                                 >
                                     <StyledText style={styles.modalButtonText}>
-                                        {t('understood') || 'I Understand'}
+                                        {t('understood') || 'Ok'}
                                     </StyledText>
                                 </LinearGradient>
                             </TouchableOpacity>
@@ -704,6 +736,55 @@ const styles = StyleSheet.create({
         color: '#666666',
         marginLeft: 10,
         fontFamily: FontsEnum.Poppins_400Regular,
+    },
+    contactNumberCard: {
+        flexDirection: 'row',
+        backgroundColor: '#F9FAFB',
+        borderRadius: 16,
+        padding: 16,
+        marginBottom: 16,
+        alignItems: 'center',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        justifyContent: 'center',
+        gap: 10,
+    },
+    contactNumberText: {
+        fontSize: 18,
+        color: '#111827',
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+        letterSpacing: 0.3,
+    },
+    contactButtonsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        gap: 12,
+        marginBottom: 24,
+    },
+    actionButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: 999,
+        paddingVertical: 14,
+        gap: 10,
+        shadowColor: '#000',
+        shadowOffset: {width: 0, height: 4},
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        elevation: 5,
+    },
+    actionButtonText: {
+        color: '#fff',
+        fontSize: 15,
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+    },
+    callButton: {
+        backgroundColor: Colors.primary,
+    },
+    whatsappButton: {
+        backgroundColor: '#25D366',
     },
     modalButton: {
         borderRadius: 12,

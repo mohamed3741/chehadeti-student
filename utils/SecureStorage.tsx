@@ -1,11 +1,23 @@
 import * as SecureStore from 'expo-secure-store';
 
-export const storeSecureData = async (key: string, value: string) => {
+type SecureValue = string | number | boolean | object | null | undefined;
+
+export const storeSecureData = async (key: string, value: SecureValue) => {
     try {
-        await SecureStore.setItemAsync(key, value)
+        if (value === null || typeof value === 'undefined') {
+            await SecureStore.deleteItemAsync(key);
+            return;
+        }
+
+        const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+        if (typeof stringValue === 'undefined') {
+            throw new Error(`Unable to stringify secure value for key: ${key}`);
+        }
+
+        await SecureStore.setItemAsync(key, stringValue);
     } catch (e) {
         // saving error
-        console.log('saving',e)
+        console.log('saving', e);
     }
 };
 

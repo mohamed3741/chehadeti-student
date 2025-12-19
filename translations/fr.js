@@ -698,6 +698,8 @@ export const fr = {
     "aboutDescription": "En savoir plus sur Chehadeti",
     "contactSupportMessage": "Contactez notre équipe de support",
     "call": "Appeler",
+    "activationShortMessage": "Veuillez contacter l'équipe de l'école pour activer votre accès.",
+    "whatsappUnavailable": "WhatsApp n'est pas installé sur cet appareil.",
     "lmsTagline": "Système de gestion de l'apprentissage",
     "version": "Version",
     "aboutChehadeti": "À propos de Chehadeti",

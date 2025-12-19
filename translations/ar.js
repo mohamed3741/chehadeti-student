@@ -196,6 +196,8 @@ export const ar = {
     "first_last_required": "الاسم الأول واسم العائلة مطلوبان.",
 
     "call": "اتصال",
+    "activationShortMessage": "يرجى الاتصال بفريق المدرسة لتفعيل حسابك.",
+    "whatsappUnavailable": "تطبيق واتساب غير مثبت على هذا الجهاز.",
     "details": "تفاصيل",
 
     "no_teachers": "لا يوجد معلمون",
