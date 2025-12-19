@@ -260,13 +260,7 @@ export const LastVisitedComponent: React.FC<LastVisitedComponentProps> = ({
         return null; // Hide component while loading
     }
 
-    // Debug logging
-    console.log('🔍 LastVisitedComponent render check:', {
-        lastVisited: lastVisited,
-        recentVisitsLength: recentVisits.length,
-        hasLastVisited: !!lastVisited,
-        hasRecentVisits: recentVisits.length > 0
-    });
+
 
     // Don't render anything if there's no recent activity
     if (!lastVisited && recentVisits.length === 0) {
