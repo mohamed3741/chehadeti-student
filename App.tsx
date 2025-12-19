@@ -60,10 +60,8 @@ function App() {
 function AppContent({colorScheme}) {
     const isLoadingComplete = useCachedResources();
     
-    console.log('AppContent - isLoadingComplete:', isLoadingComplete);
-    
+
     if (!isLoadingComplete) {
-        console.log('AppContent - Still loading, showing loading screen');
         return (
             <SafeAreaProvider style={{flex: 1, backgroundColor: '#FFF', justifyContent: 'center', alignItems: 'center'}}>
                 <Text style={{fontSize: 18, color: '#333'}}>Loading app...</Text>
@@ -71,8 +69,7 @@ function AppContent({colorScheme}) {
         );
     }
     
-    console.log('AppContent - Loading complete, rendering Navigation');
-    
+
     return (
         <>
             <Navigation colorScheme={colorScheme}/>

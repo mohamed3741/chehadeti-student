@@ -25,6 +25,7 @@ import { MediaEnum } from "../../models/LMS";
 import type { TabHomeParamList } from "../../types";
 import * as ScreenCapture from "expo-screen-capture";
 import PdfViewer from "../../components/PdfViewer";
+import VideoPlayer from "../../components/VideoPlayer";
 import { LMSApi } from "../../api/LMSApi";
 import { Toast } from "../../components/Toast";
 // NOTE: imports and styles intentionally omitted as requested.
@@ -141,6 +142,13 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
         return /\.(png|jpe?g|gif|webp)(\?|$)/.test(href);
     }, [content]);
 
+    const isVideoContent = React.useMemo(() => {
+        const ct = String(content?.contentType || "").toUpperCase();
+        if (ct === "VIDEO") return true;
+        const href = String(content?.media?.link || "").toLowerCase();
+        return /\.(mp4|m3u8|mov|avi|mkv|webm)(\?|$)/.test(href) || href.includes("m3u8");
+    }, [content]);
+
     // ---------- Renderers ----------
 
     const renderPDF = () => {
@@ -209,14 +217,7 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
                     enableFastScroll
                 />
 
-                <View style={styles.securityBadge}>
-                    <Ionicons name="shield-checkmark" size={12} color="#FFFFFF" />
-                    <StyledText style={styles.securityBadgeText}>
-                        {isScreenCaptureEnabled
-                            ? `${t("protected") || "Protected"} • ${t("screenshotBlocked") || "Screenshot Blocked"}`
-                            : `${t("protected") || "Protected"}`}
-                    </StyledText>
-                </View>
+
             </View>
         );
     };
@@ -269,6 +270,45 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
         </View>
     );
 
+    const renderVideo = () => {
+        const rawUrl = content.media?.link;
+
+        if (!rawUrl) {
+            return (
+                <View style={styles.contentContainer}>
+                    <View style={styles.errorContainer}>
+                        <Ionicons name="videocam-off-outline" size={64} color={Colors.primary} />
+                        <StyledText style={styles.errorTitle}>
+                            {t("videoNotAvailable") || "Video Not Available"}
+                        </StyledText>
+                        <StyledText style={styles.errorDescription}>
+                            {t("videoNotAvailableMessage") || "This video cannot be displayed."}
+                        </StyledText>
+                    </View>
+                </View>
+            );
+        }
+
+        return (
+            <View key={`video-${focusKey}`} style={styles.contentContainer}>
+                <VideoPlayer
+                    source={{ uri: rawUrl }}
+                    contentId={content.id}
+                    style={styles.video}
+                    onLoad={() => {
+                        console.log("🎥 Video loaded");
+                        // Track visit when video is successfully loaded
+                        trackContentVisit();
+                    }}
+                    onError={(error) => {
+                        console.log("❌ Video error:", error);
+                        Alert.alert(t("error") || "Error", t("failedToLoadVideo") || "Failed to load video.");
+                    }}
+                />
+            </View>
+        );
+    };
+
     const renderDefault = () => {
         // Track visit for text content immediately since there's no loading state
         React.useEffect(() => {
@@ -294,6 +334,7 @@ const ContentViewerScreen = ({ route }: ContentViewerScreenProps) => {
         if (!link) return renderDefault();
 
         if (isPdfContent) return renderPDF();
+        if (isVideoContent) return renderVideo();
         if (isImageContent) return renderImage();
 
         // If your backend mislabels PDFs as images by name (.png) but contentType==="PDF",
@@ -390,6 +431,11 @@ const styles = StyleSheet.create({
         flex: 1,
         width: width,
         backgroundColor: "#111216",
+    },
+    video: {
+        flex: 1,
+        width: width,
+        backgroundColor: "#000000",
     },
 
     loadingContainer: {

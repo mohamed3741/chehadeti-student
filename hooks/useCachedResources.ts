@@ -23,7 +23,6 @@ export default function useCachedResources() {
     });
     const {refreshUser} = useAuth();
 
-    console.log('useCachedResources - fontsLoaded:', fontsLoaded, 'isLoadingComplete:', isLoadingComplete);
 
     // Load any resources or data that we need prior to rendering the app
     useEffect(() => {
