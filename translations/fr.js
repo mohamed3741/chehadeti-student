@@ -752,5 +752,6 @@ export const fr = {
     "pictureInPictureError": "Erreur de Lecture Réduite",
     "pictureInPictureErrorMessage": "Échec du basculement en mode lecture réduite. Veuillez réessayer.",
     "enterPictureInPicture": "Lecture Réduite",
-    "exitPictureInPicture": "Quitter la Lecture Réduite"
+    "exitPictureInPicture": "Quitter la Lecture Réduite",
+    "myCourses": "Mes Cours"
 }
