@@ -819,5 +819,6 @@ export const en = {
     "pictureInPictureErrorMessage": "Failed to toggle Picture-in-Picture mode. Please try again.",
     "enterPictureInPicture": "Picture-in-Picture",
     "exitPictureInPicture": "Exit PiP",
-    "myCourses": "My Courses"
+    "myCourses": "My Courses",
+    "searchPlaceholder": "Search courses, chapters, and content..."
 };

@@ -25,6 +25,7 @@ import {CourseDTO, SearchResultDTO, LastVisitedContentDTO} from "../../models/LM
 import {Toast} from "../../components/Toast";
 import {TabHomeParamList} from "../../types";
 import {SearchComponent} from "../../components/SearchComponent";
+import {PrayersComponent} from "../../components/PrayersComponent";
 import {LastVisitedComponent} from "../../components/LastVisitedComponent";
 
 type HomeScreenNavigationProp = StackNavigationProp<TabHomeParamList, 'TabHomeScreen'>;
@@ -409,6 +410,7 @@ const HomeScreen = () => {
 
                             return null;
                         })()}
+                        <PrayersComponent />
                         <LastVisitedComponent 
                             onContentPress={handleLastVisitedPress}
                             limit={5}
