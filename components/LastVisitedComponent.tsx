@@ -6,14 +6,16 @@ import {
     StyleSheet,
     ActivityIndicator,
     RefreshControl,
+    Image,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyledText } from './StyledText';
 import { FontsEnum } from '../constants/FontsEnum';
 import Colors from '../constants/Colors';
 import { LMSApi } from '../api/LMSApi';
-import { LastVisitedContentDTO } from '../models/LMS';
+import { LastVisitedContentDTO, ContentType } from '../models/LMS';
 
 interface LastVisitedComponentProps {
     onContentPress: (content: LastVisitedContentDTO) => void;
@@ -30,9 +32,17 @@ export const LastVisitedComponent: React.FC<LastVisitedComponentProps> = ({
     const [refreshing, setRefreshing] = useState(false);
     const [loadingContentId, setLoadingContentId] = useState<number | null>(null);
 
+    // Fetch data on mount
     useEffect(() => {
         fetchLastVisitedData();
     }, []);
+
+    // Refresh data when screen comes into focus
+    useFocusEffect(
+        React.useCallback(() => {
+            fetchLastVisitedData();
+        }, [])
+    );
 
     const fetchLastVisitedData = async () => {
         try {
@@ -138,39 +148,79 @@ export const LastVisitedComponent: React.FC<LastVisitedComponentProps> = ({
         }
     };
 
+    // Thumbnail component for video content
+    const VideoThumbnail = React.memo(({ thumbnail, iconColor }: { thumbnail: string; iconColor: string }) => {
+        const [thumbnailLoading, setThumbnailLoading] = useState(true);
+        const [thumbnailError, setThumbnailError] = useState(false);
+
+        return (
+            <View style={styles.lastVisitedThumbnailContainer}>
+                {thumbnailLoading && (
+                    <View style={styles.lastVisitedThumbnailLoader}>
+                        <ActivityIndicator size="small" color={iconColor} />
+                    </View>
+                )}
+                <Image
+                    source={{ uri: thumbnail }}
+                    style={styles.lastVisitedThumbnail}
+                    resizeMode="cover"
+                    onLoadStart={() => setThumbnailLoading(true)}
+                    onLoadEnd={() => setThumbnailLoading(false)}
+                    onError={() => {
+                        setThumbnailLoading(false);
+                        setThumbnailError(true);
+                    }}
+                />
+                {!thumbnailError && (
+                    <View style={styles.lastVisitedPlayOverlay}>
+                        <View style={[styles.lastVisitedPlayButton, { backgroundColor: iconColor }]}>
+                            <Ionicons name="play" size={16} color="#FFFFFF" />
+                        </View>
+                    </View>
+                )}
+            </View>
+        );
+    });
+
     const renderLastVisitedCard = () => {
-
-        
         if (!lastVisited) {
-
             return null;
         }
 
-
+        const isVideo = lastVisited.contentType?.toUpperCase() === 'VIDEO';
+        const hasThumbnail = isVideo && lastVisited.media?.thumbnail;
+        const iconColor = getContentColor(lastVisited.contentType);
 
         return (
             <TouchableOpacity
-                style={styles.lastVisitedCard}
+                style={[styles.lastVisitedCard, isVideo && hasThumbnail && styles.videoLastVisitedCard]}
                 onPress={() => handleContentPress(lastVisited)}
                 activeOpacity={0.8}
                 disabled={loadingContentId === lastVisited.contentId}
             >
                 <LinearGradient
-                    colors={[getContentColor(lastVisited.contentType) + '20', getContentColor(lastVisited.contentType) + '10']}
+                    colors={[iconColor + '20', iconColor + '10']}
                     style={styles.lastVisitedGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                 >
                     <View style={styles.lastVisitedHeader}>
-                        <View style={styles.lastVisitedIconContainer}>
-                            <View style={[styles.lastVisitedIcon, { backgroundColor: getContentColor(lastVisited.contentType) }]}>
-                                <Ionicons 
-                                    name={getContentIcon(lastVisited.contentType) as any} 
-                                    size={24} 
-                                    color="#FFFFFF" 
-                                />
+                        {hasThumbnail ? (
+                            <VideoThumbnail 
+                                thumbnail={lastVisited.media!.thumbnail!} 
+                                iconColor={iconColor} 
+                            />
+                        ) : (
+                            <View style={styles.lastVisitedIconContainer}>
+                                <View style={[styles.lastVisitedIcon, { backgroundColor: iconColor }]}>
+                                    <Ionicons 
+                                        name={getContentIcon(lastVisited.contentType) as any} 
+                                        size={24} 
+                                        color="#FFFFFF" 
+                                    />
+                                </View>
                             </View>
-                        </View>
+                        )}
                         <View style={styles.lastVisitedBadge}>
                             <StyledText style={styles.lastVisitedBadgeText}>
                                 Last Visited
@@ -442,5 +492,59 @@ const styles = StyleSheet.create({
         color: '#9CA3AF',
         fontFamily: FontsEnum.Poppins_400Regular,
         marginLeft: 6,
+    },
+    videoLastVisitedCard: {
+        borderWidth: 1.5,
+        borderColor: '#8B5CF6' + '30',
+    },
+    lastVisitedThumbnailContainer: {
+        width: 80,
+        height: 80,
+        borderRadius: 12,
+        marginBottom: 8,
+        overflow: 'hidden',
+        alignItems: 'center',
+        justifyContent: 'center',
+        position: 'relative',
+        backgroundColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    lastVisitedThumbnail: {
+        width: 80,
+        height: 80,
+    },
+    lastVisitedThumbnailLoader: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: '#F3F4F6',
+    },
+    lastVisitedPlayOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    },
+    lastVisitedPlayButton: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
 });

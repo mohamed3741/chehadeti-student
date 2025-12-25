@@ -8,7 +8,8 @@ import {
     Platform,
     Dimensions,
 } from "react-native";
-import { VideoView, useVideoPlayer } from "expo-video";
+import { VideoView, useVideoPlayer, Video } from "expo-video";
+import { useEvent } from "expo";
 import { Ionicons } from "@expo/vector-icons";
 import { StyledText } from "./StyledText";
 import { FontsEnum } from "../constants/FontsEnum";
@@ -50,6 +51,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     const [isLoading, setIsLoading] = useState(true);
     const [videoUri, setVideoUri] = useState<string>(source.uri);
     const [isScreenCaptureEnabled, setIsScreenCaptureEnabled] = useState(false);
+    const [isPictureInPictureActive, setIsPictureInPictureActive] = useState(false);
+    const [isPictureInPictureSupported, setIsPictureInPictureSupported] = useState(false);
     const playerRef = useRef<VideoView>(null);
 
     // Check if video is already downloaded
@@ -61,6 +64,20 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     useEffect(() => {
         setVideoUri(source.uri);
     }, [source.uri]);
+
+    // Check if Picture-in-Picture is supported
+    useEffect(() => {
+        const checkPiPSupport = () => {
+            try {
+                const supported = Video.isPictureInPictureSupported();
+                setIsPictureInPictureSupported(supported);
+            } catch (error) {
+                console.log("Error checking PiP support:", error);
+                setIsPictureInPictureSupported(false);
+            }
+        };
+        checkPiPSupport();
+    }, []);
 
     // Enable screen capture protection
     useEffect(() => {
@@ -179,28 +196,73 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         player.muted = false;
     });
 
-    // Handle player events
+    // Use useEvent hook for better event handling (best practice from documentation)
+    const { status } = useEvent(player, "statusChange", {
+        status: player.status,
+    });
+
+    // Handle player status changes with useEvent (reactive state)
+    useEffect(() => {
+        if (status === "readyToPlay") {
+            setIsLoading(false);
+            onLoad?.();
+        }
+        if (status === "error") {
+            setIsLoading(false);
+        }
+    }, [status, onLoad]);
+
+    // Use addListener for error details and status updates (complementary to useEvent)
     useEffect(() => {
         if (!player) return;
 
-        const subscription = player.addListener("statusChange", (status) => {
-            if (status.status === "readyToPlay") {
-                setIsLoading(false);
-                onLoad?.();
-            }
-            if (status.status === "error") {
-                setIsLoading(false);
-                const errorMessage = status.error || "Unknown error";
+        const subscription = player.addListener("statusChange", ({ status: playerStatus, error: playerError }) => {
+            if (playerStatus === "error") {
+                const errorMessage = playerError?.message || "Unknown error";
                 console.error("Video player error:", errorMessage);
                 onError?.(errorMessage);
             }
-            onPlaybackStatusUpdate?.(status);
+            onPlaybackStatusUpdate?.({ status: playerStatus, error: playerError });
         });
 
         return () => {
             subscription.remove();
         };
-    }, [player, onLoad, onError, onPlaybackStatusUpdate]);
+    }, [player, onError, onPlaybackStatusUpdate]);
+
+    // Handle Picture-in-Picture events
+    const handlePictureInPictureStart = () => {
+        setIsPictureInPictureActive(true);
+    };
+
+    const handlePictureInPictureStop = () => {
+        setIsPictureInPictureActive(false);
+    };
+
+    // Handle Picture-in-Picture button press
+    const handlePictureInPicturePress = async () => {
+        if (!playerRef.current || !isPictureInPictureSupported) {
+            Alert.alert(
+                t("pictureInPictureNotSupported") || "Picture-in-Picture Not Supported",
+                t("pictureInPictureNotSupportedMessage") || "Picture-in-Picture is not supported on this device."
+            );
+            return;
+        }
+
+        try {
+            if (isPictureInPictureActive) {
+                await playerRef.current.stopPictureInPicture();
+            } else {
+                await playerRef.current.startPictureInPicture();
+            }
+        } catch (error: any) {
+            console.error("Picture-in-Picture error:", error);
+            Alert.alert(
+                t("pictureInPictureError") || "Picture-in-Picture Error",
+                error?.message || t("pictureInPictureErrorMessage") || "Failed to toggle Picture-in-Picture mode. Please try again."
+            );
+        }
+    };
 
     // Determine if source is HLS (.m3u8)
     const isHLS = source.uri.toLowerCase().includes(".m3u8") || source.uri.toLowerCase().includes("m3u8");
@@ -224,10 +286,32 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                         player={player}
                         style={styles.video}
                         allowsFullscreen
-                        allowsPictureInPicture
+                        allowsPictureInPicture={isPictureInPictureSupported}
                         contentFit="contain"
                         nativeControls
+                        onPictureInPictureStart={handlePictureInPictureStart}
+                        onPictureInPictureStop={handlePictureInPictureStop}
                     />
+                )}
+
+                {/* Picture-in-Picture Button */}
+                {isPictureInPictureSupported && player && !isLoading && (
+                    <TouchableOpacity
+                        style={styles.pipButton}
+                        onPress={handlePictureInPicturePress}
+                        activeOpacity={0.7}
+                    >
+                        <Ionicons
+                            name={isPictureInPictureActive ? "close-circle" : "open-outline"}
+                            size={24}
+                            color="#FFFFFF"
+                        />
+                        <StyledText style={styles.pipButtonText}>
+                            {isPictureInPictureActive
+                                ? t("exitPictureInPicture") || "Exit PiP"
+                                : t("enterPictureInPicture") || "Picture-in-Picture"}
+                        </StyledText>
+                    </TouchableOpacity>
                 )}
 
 {/*
@@ -411,6 +495,30 @@ const styles = StyleSheet.create({
     },
     securityBadgeText: {
         fontSize: 11,
+        color: "#FFFFFF",
+        fontFamily: FontsEnum.Poppins_600SemiBold,
+        fontWeight: "600",
+    },
+    pipButton: {
+        position: "absolute",
+        top: 16,
+        right: 16,
+        flexDirection: "row",
+        alignItems: "center",
+        gap: 8,
+        backgroundColor: "rgba(106, 53, 193, 0.9)",
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 24,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        elevation: 5,
+        zIndex: 20,
+    },
+    pipButtonText: {
+        fontSize: 14,
         color: "#FFFFFF",
         fontFamily: FontsEnum.Poppins_600SemiBold,
         fontWeight: "600",

@@ -139,5 +139,6 @@ export interface LastVisitedContentDTO {
     chapterTitle?: string;
     subsectionTitle?: string;
     lastVisitedAt: string;
+    media?: MediaDTO;
 }
 

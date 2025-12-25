@@ -2,7 +2,7 @@
   "expo": {
     "name": "شهادتي",
     "slug": "chehadeti-app",
-    "version": "0.0.38",
+    "version": "0.0.39",
     "orientation": "portrait",
     "jsEngine": "hermes",
     "icon": "./assets/icons/icon.png",
@@ -56,6 +56,13 @@
       "expo-web-browser",
       "expo-localization",
       "./android-material.plugins",
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
       [
         "expo-build-properties",
         {

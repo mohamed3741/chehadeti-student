@@ -746,5 +746,12 @@ export const fr = {
     "passwordsMatch": "Les mots de passe correspondent",
     "savePassword": "Sauvegarder le mot de passe",
     "failedToLoadDocument": "Échec du chargement du document. Veuillez réessayer.",
-    "errorLoadingImage": "Échec du chargement de l'image"
+    "errorLoadingImage": "Échec du chargement de l'image",
+    "pictureInPictureNotSupported": "Lecture Réduite Non Supportée",
+    "pictureInPictureNotSupportedMessage": "La lecture réduite (Picture-in-Picture) n'est pas supportée sur cet appareil.",
+    "pictureInPictureError": "Erreur de Lecture Réduite",
+    "pictureInPictureErrorMessage": "Échec du basculement en mode lecture réduite. Veuillez réessayer.",
+    "enterPictureInPicture": "Lecture Réduite",
+    "exitPictureInPicture": "Quitter la Lecture Réduite",
+    "myCourses": "Mes Cours"
 }
