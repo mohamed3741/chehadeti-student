@@ -2,7 +2,7 @@
   "expo": {
     "name": "شهادتي",
     "slug": "chehadeti-app",
-    "version": "0.0.39",
+    "version": "0.0.43",
     "orientation": "portrait",
     "jsEngine": "hermes",
     "icon": "./assets/icons/icon.png",
@@ -42,7 +42,7 @@
         "SYSTEM_ALERT_WINDOW"
       ],
       "package": "com.chehadeti.admin",
-      "versionCode": 15
+      "versionCode": 44
     },
     "web": {
       "favicon": "./assets/images/icon.png"
@@ -78,7 +78,8 @@
             "newArchEnabled": true
           }
         }
-      ]
+      ],
+      "./plugins/remove-media-permissions"
     ],
     "extra": {
       "router": {},
