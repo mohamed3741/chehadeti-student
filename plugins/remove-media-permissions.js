@@ -1,37 +1,48 @@
-// Config plugin to remove READ_MEDIA_IMAGES and READ_MEDIA_VIDEO permissions
-const { withAndroidManifest, AndroidConfig } = require('@expo/config-plugins');
+const { withAndroidManifest, AndroidConfig } = require("@expo/config-plugins");
 
-const MEDIA_PERMISSIONS_TO_REMOVE = [
-  'android.permission.READ_MEDIA_IMAGES',
-  'android.permission.READ_MEDIA_VIDEO',
+const PERMS_TO_REMOVE = [
+  "android.permission.READ_MEDIA_IMAGES",
+  "android.permission.READ_MEDIA_VIDEO",
+  // Often also pulled in by libs / older flows:
+  "android.permission.READ_EXTERNAL_STORAGE",
 ];
 
 module.exports = function withRemoveMediaPermissions(config) {
   return withAndroidManifest(config, (config) => {
-    const androidManifest = config.modResults;
-    const { manifest } = androidManifest;
+    const manifest = config.modResults.manifest;
+    if (!manifest) return config;
 
-    if (!manifest) {
-      return config;
-    }
+    // Ensure tools namespace exists so tools:node works
+    manifest.$ = manifest.$ || {};
+    manifest.$["xmlns:tools"] = manifest.$["xmlns:tools"] || "http://schemas.android.com/tools";
 
-    // Remove permissions from uses-permission array
-    if (manifest['uses-permission']) {
-      manifest['uses-permission'] = manifest['uses-permission'].filter((permission) => {
-        const permissionName = permission.$?.['android:name'];
-        return !MEDIA_PERMISSIONS_TO_REMOVE.includes(permissionName);
+    // Ensure uses-permission array exists
+    manifest["uses-permission"] = manifest["uses-permission"] || [];
+
+    // 1) Remove any existing entries in app manifest (nice-to-have)
+    manifest["uses-permission"] = manifest["uses-permission"].filter((p) => {
+      const name = p?.$?.["android:name"];
+      return !PERMS_TO_REMOVE.includes(name);
+    });
+
+    // 2) Add explicit "remove" directives to override library manifests
+    for (const name of PERMS_TO_REMOVE) {
+      manifest["uses-permission"].push({
+        $: {
+          "android:name": name,
+          "tools:node": "remove",
+        },
       });
     }
 
-    // Also remove from permissions array if it exists
-    if (manifest.permission) {
-      manifest.permission = manifest.permission.filter((permission) => {
-        const permissionName = permission.$?.['android:name'];
-        return !MEDIA_PERMISSIONS_TO_REMOVE.includes(permissionName);
-      });
+    // Also handle common alternative permission arrays if present
+    const keys = ["uses-permission-sdk-23", "uses-permission-sdk-m", "uses-permission-sdk-33"];
+    for (const k of keys) {
+      if (manifest[k]) {
+        manifest[k] = manifest[k].filter((p) => !PERMS_TO_REMOVE.includes(p?.$?.["android:name"]));
+      }
     }
 
     return config;
   });
 };
-
